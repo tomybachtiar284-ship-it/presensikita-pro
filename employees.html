@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PresensiKita Pro - Database Karyawan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .custom-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+    <div id="app-container" class="flex min-h-screen bg-slate-50">
+        <div id="sidebar-container"></div>
+        <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
+            <div id="content-container" class="space-y-8 mt-16 lg:mt-0 pb-12">
+                <!-- Header -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <h2 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Database Karyawan</h2>
+                        <p class="text-slate-500 font-medium mt-1">Kelola data seluruh karyawan, shift, dan status
+                            aktif.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="downloadTemplate()"
+                            class="flex items-center gap-2 px-4 py-4 bg-slate-50 text-slate-500 rounded-[1.5rem] font-bold text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-200">
+                            <i data-lucide="file-down" width="16" height="16"></i> Template
+                        </button>
+
+                        <button onclick="document.getElementById('file-upload').click()"
+                            class="flex items-center gap-3 px-6 py-4 bg-white text-slate-600 rounded-[1.5rem] font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-200 shadow-sm">
+                            <i data-lucide="upload-cloud" width="18" height="18"></i> Import CSV
+                        </button>
+                        <input type="file" id="file-upload" class="hidden" accept=".csv">
+
+                        <button onclick="showForm()"
+                            class="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100">
+                            <i data-lucide="plus" width="18" height="18"></i> Tamah Karyawan
+                        </button>
+                    </div>
+                </div>
+
+                <div id="stats-panel" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6">
+                    <!-- Injected by JS -->
+                </div>
+
+                <!-- Tools & Grid -->
+                <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden min-h-[500px]">
+                    <div
+                        class="p-8 border-b border-slate-50 flex flex-col md:flex-row gap-6 items-center justify-between bg-slate-50/50">
+
+                        <!-- Search -->
+                        <div class="relative w-full md:max-w-md group">
+                            <i data-lucide="search" width="20" height="20"
+                                class="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-hover:text-indigo-500 transition-colors"></i>
+                            <input id="search-input"
+                                class="w-full pl-14 pr-6 py-4 bg-white border-2 border-slate-100 rounded-[1.5rem] font-bold text-slate-600 outline-none focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50 transition-all text-xs uppercase tracking-widest"
+                                placeholder="Cari NID atau Nama..." />
+                        </div>
+
+                        <div class="flex gap-3 w-full md:w-auto">
+                            <!-- Filter -->
+                            <div class="relative flex-1 md:flex-none">
+                                <i data-lucide="filter" width="18" height="18"
+                                    class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 z-10"></i>
+                                <select id="filter-shift"
+                                    class="w-full md:w-48 pl-12 pr-10 py-4 bg-white border-2 border-slate-100 rounded-[1.5rem] font-bold text-[10px] uppercase tracking-widest text-slate-600 appearance-none outline-none focus:border-indigo-100 cursor-pointer hover:bg-slate-50 transition-all">
+                                    <option value="">Semua Shift</option>
+                                    <option value="SHIFT A">Shift A</option>
+                                    <option value="SHIFT B">Shift B</option>
+                                    <option value="SHIFT C">Shift C</option>
+                                    <option value="SHIFT D">Shift D</option>
+                                    <option value="REGULER">Reguler</option>
+                                </select>
+                            </div>
+
+                            <!-- Reset DB Button -->
+                            <button onclick="window.handleReset()"
+                                class="p-4 bg-rose-50 text-rose-500 rounded-[1.5rem] hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                title="Reset Database">
+                                <i data-lucide="trash-2" width="20" height="20"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Employee Grid -->
+                    <div id="employee-grid" class="p-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </main>
+        <div id="modal-container"></div>
+    </div>
+
+    <script type="module">
+        import { requireAuth, logout } from './js/auth.js';
+        import { renderSidebar } from './js/components.js';
+        import { StorageManager, UserRole, ShiftGroup } from './js/data.js';
+
+        const user = requireAuth();
+        if (user) {
+            document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
+
+            // Mobile Menu Logic
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+            const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', () => mobileOverlay.classList.remove('hidden'));
+            if (closeMobileSidebar) closeMobileSidebar.addEventListener('click', () => mobileOverlay.classList.add('hidden'));
+            if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+            // --- Employee Logic ---
+            let users = StorageManager.getUsers().filter(u => u.role !== 'ADMIN'); // Exclude super admin from list
+            let searchTerm = '';
+            let filterShift = '';
+
+            const normalize = (s) => (s || '').toString().trim().toUpperCase();
+
+            window.updateStats = () => {
+                const total = users.length;
+                const count = (s) => users.filter(u => normalize(u.shiftGroup) === s).length;
+
+                const stats = [
+                    { label: 'Total Karyawan', val: total, color: 'bg-emerald-500', icon: 'users' },
+                    { label: 'Shift A', val: count('SHIFT A'), color: 'bg-indigo-500', icon: 'clock' },
+                    { label: 'Shift B', val: count('SHIFT B'), color: 'bg-blue-500', icon: 'clock' },
+                    { label: 'Shift C', val: count('SHIFT C'), color: 'bg-amber-500', icon: 'clock' },
+                    { label: 'Shift D', val: count('SHIFT D'), color: 'bg-purple-500', icon: 'clock' },
+                    { label: 'Reguler', val: count('REGULER'), color: 'bg-rose-500', icon: 'briefcase' },
+                ];
+
+                document.getElementById('stats-panel').innerHTML = stats.map(s => `
+                    <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 flex flex-col justify-between shadow-sm hover:shadow-xl transition-all h-full group">
+                        <div class="flex justify-between items-start mb-4">
+                             <div class="p-3.5 rounded-[1.2rem] ${s.color} bg-opacity-10 text-${s.color.replace('bg-', '')}-600 group-hover:scale-110 transition-transform">
+                                <i data-lucide="${s.icon}" width="24" height="24" class="${s.color.replace('bg-', 'text-')}"></i>
+                             </div>
+                             <div class="w-2.5 h-2.5 rounded-full ${s.color} shadow-sm animate-pulse"></div>
+                        </div>
+                        <div>
+                            <h4 class="text-4xl font-black text-slate-800 tracking-tighter mb-1">${s.val}</h4>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${s.label}</p>
+                        </div>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+
+            // Helper for date calculation
+            const calculateDays = (start, end) => {
+                const s = new Date(start);
+                const e = new Date(end);
+                return Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
+            };
+
+            window.viewUser = (id) => {
+                const user = users.find(u => u.id === id);
+                if (!user) return;
+
+                // Calculate Stats
+                const allRequests = StorageManager.getRequests();
+                const allAttendance = StorageManager.getAttendance();
+                const userRequests = allRequests.filter(r => r.userId === user.id && r.status === 'APPROVED');
+                const userAttendance = allAttendance.filter(a => a.userId === user.id);
+
+                const stats = {
+                    cuti: 0,
+                    sakit: 0,
+                    izin: 0,
+                    dinas: 0,
+                    telat: userAttendance.filter(a => a.status === 'LATE').length,
+                    hadir: userAttendance.filter(a => a.status === 'PRESENT').length
+                };
+
+                // Fallback to attendance counts if requests are 0, or sum them?
+                // Dashboard logic: Sums approved requests duration.
+                userRequests.forEach(r => {
+                    const days = calculateDays(r.startDate || r.start, r.endDate || r.end);
+                    if (r.type.includes('CUTI')) stats.cuti += days;
+                    else if (r.type.includes('SAKIT')) stats.sakit += days;
+                    else if (r.type.includes('IZIN') || r.type.includes('PP')) stats.izin += days;
+                    else if (r.type.includes('DINAS')) stats.dinas += days;
+                });
+
+                // Also add legacy attendance records if no requests cover them (simplified to just add unique days if needed, 
+                // but dashboard logic actually just sums them or relies on one source. 
+                // The dashboard logic uses a fallback: if req == 0, use attendance.
+                // Let's replicate dashboard logic exactly if possible, or just sum requests as they are the source of truth for "Total Cuti/Sakit".
+                // Dashboard Logic: 
+                // totalCutiRequests > 0 ? totalCutiRequests : userAttendance.filter(LEAVE).length
+
+                if (stats.cuti === 0) stats.cuti = userAttendance.filter(a => a.status === 'LEAVE').length;
+                if (stats.sakit === 0) stats.sakit = userAttendance.filter(a => a.status === 'SICK').length;
+                if (stats.izin === 0) stats.izin = userAttendance.filter(a => a.status === 'PERMISSION').length;
+                if (stats.dinas === 0) stats.dinas = userAttendance.filter(a => a.status === 'BUSINESS_TRIP').length;
+
+                const renderCard = (label, val, unit, icon, color) => `
+                    <div class="bg-slate-50 p-5 rounded-[2rem] border border-slate-100 flex flex-col justify-between hover:bg-white hover:shadow-lg transition-all group">
+                        <div class="flex justify-between items-start mb-3">
+                             <div class="p-3 rounded-2xl ${color} bg-opacity-10 text-${color.replace('bg-', '')}-600 group-hover:scale-110 transition-transform">
+                                <i data-lucide="${icon}" width="18" height="18" class="${color.replace('bg-', 'text-')}"></i>
+                             </div>
+                        </div>
+                        <div>
+                            <h4 class="text-3xl font-black text-slate-800 tracking-tighter mb-1">${val}</h4>
+                            <div class="flex items-center justify-between">
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${label}</p>
+                                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest">${unit}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const modalHTML = `
+                    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <div class="bg-white w-full max-w-5xl rounded-[3.5rem] shadow-2xl relative overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col md:flex-row">
+                             
+                             <!-- Left: Identity Section -->
+                             <div class="w-full md:w-1/3 bg-slate-50 p-10 flex flex-col items-center justify-center text-center border-r border-slate-100 relative overflow-hidden">
+                                 <div class="absolute top-0 left-0 w-full h-32 bg-indigo-600 opacity-5"></div>
+                                 <div class="relative z-10">
+                                     <div class="w-32 h-32 p-1 bg-white rounded-[2.5rem] shadow-xl mb-6 mx-auto rotate-3 hover:rotate-0 transition-all duration-500">
+                                        <img src="${user.avatar}" class="w-full h-full rounded-[2.2rem] object-cover" />
+                                     </div>
+                                     <h3 class="text-2xl font-black text-slate-900 uppercase tracking-tight leading-8 mb-2">${user.name}</h3>
+                                     <div class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl">
+                                         <i data-lucide="briefcase" width="14" height="14"></i>
+                                         <span class="text-[10px] font-black uppercase tracking-widest">${user.position}</span>
+                                     </div>
+                                 </div>
+                                 
+                                 <div class="mt-10 w-full space-y-4">
+                                     <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 text-left">
+                                         <div class="p-3 bg-slate-50 text-slate-400 rounded-xl"><i data-lucide="building-2" width="18" height="18"></i></div>
+                                         <div>
+                                             <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest">Divisi</p>
+                                             <p class="text-xs font-bold text-slate-700 uppercase">${user.division}</p>
+                                         </div>
+                                     </div>
+                                     <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 text-left">
+                                         <div class="p-3 bg-slate-50 text-slate-400 rounded-xl"><i data-lucide="map-pin" width="18" height="18"></i></div>
+                                         <div>
+                                             <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest">Unit Kerja</p>
+                                             <p class="text-xs font-bold text-slate-700 uppercase">${user.workUnit}</p>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+
+                             <!-- Right: Details & Stats -->
+                             <div class="w-full md:w-2/3 p-10 md:p-12 bg-white">
+                                 <div class="flex justify-between items-center mb-8">
+                                     <h4 class="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                                         <span class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white"><i data-lucide="bar-chart-2" width="18" height="18"></i></span>
+                                         Overview Kinerja
+                                     </h4>
+                                     <button onclick="document.getElementById('modal-container').innerHTML = ''" class="p-3 bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 rounded-xl transition-all"><i data-lucide="x" width="20" height="20"></i></button>
+                                 </div>
+
+                                 <!-- Stats Grid -->
+                                 <div class="grid grid-cols-2 md:grid-cols-3 gap-5 mb-10">
+                                    ${renderCard('Total Cuti', stats.cuti, 'Hari', 'calendar-off', 'bg-rose-500')}
+                                    ${renderCard('Total Sakit', stats.sakit, 'Hari', 'stethoscope', 'bg-blue-500')}
+                                    ${renderCard('Total Izin', stats.izin, 'Hari', 'file-check', 'bg-purple-500')}
+                                    ${renderCard('Dinas Luar', stats.dinas, 'Hari', 'briefcase', 'bg-amber-500')}
+                                    ${renderCard('Terlambat', stats.telat, 'Kali', 'clock', 'bg-orange-500')}
+                                    ${renderCard('Hadir', stats.hadir, 'Hari', 'user-check', 'bg-emerald-500')}
+                                 </div>
+
+                                 <!-- Info Grid -->
+                                 <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-100 pb-2">Informasi Detail</h4>
+                                 <div class="grid grid-cols-2 gap-y-6 gap-x-12">
+                                     <div>
+                                         <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Nomor Induk (NID)</p>
+                                         <p class="text-sm font-bold text-slate-700">${user.nid}</p>
+                                     </div>
+                                     <div>
+                                         <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Email</p>
+                                         <p class="text-sm font-bold text-slate-700 truncate" title="${user.email}">${user.email}</p>
+                                     </div>
+                                     <div>
+                                         <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Group Shift</p>
+                                          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                            <i data-lucide="clock" width="12" height="12"></i> ${user.shiftGroup}
+                                          </span>
+                                     </div>
+                                     <div>
+                                         <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Bergabung Sejak</p>
+                                         <p class="text-sm font-bold text-slate-700">${user.joinDate || '01 Jan 2024'}</p>
+                                     </div>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('modal-container').innerHTML = modalHTML;
+                lucide.createIcons();
+            };
+
+            window.deleteUser = (id) => {
+                const u = users.find(x => x.id === id);
+                if (!u) return;
+
+                if (confirm(`Apakah Anda yakin ingin menghapus karyawan "${u.name}"?\nData yang dihapus tidak dapat dikembalikan.`)) {
+                    users = users.filter(x => x.id !== id);
+                    StorageManager.saveUsers(users); // Assuming you have a saveUsers method or direct storage access.
+                    // Wait, checked previous files, StorageManager usually has .saveUsers or we used localStorage directly in other files.
+                    // Let's double check storage mechanism.
+                    // In previous turns, we saw StorageManager.getUsers() but didn't explicitly see saveUsers in partial view.
+                    // However, standard pattern is StorageManager.saveUsers(). 
+                    // Let's play it safe and use StorageManager.saveUsers if it exists, or check how add/edit saves.
+                    // Edit uses: const updated = [...users]; ... StorageManager.saveUsers(updated);
+                    // So StorageManager.saveUsers is valid.
+
+                    StorageManager.saveUsers(users);
+                    updateStats();
+                    render();
+                }
+            };
+
+            window.render = () => {
+                const filtered = users.filter(u => {
+                    const matchSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        u.nid.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchShift = filterShift ? normalize(u.shiftGroup) === filterShift : true;
+                    return matchSearch && matchShift;
+                });
+
+                document.getElementById('employee-grid').innerHTML = filtered.length === 0 ? `
+                    <div class="col-span-full py-20 text-center">
+                        <div class="inline-flex p-6 bg-slate-50 rounded-[2rem] mb-4 text-slate-300">
+                             <i data-lucide="search-x" width="48" height="48"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-900 uppercase tracking-tight">Data Tidak Ditemukan</h3>
+                    </div>
+                ` : filtered.map(u => `
+                    <div class="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 hover:bg-white hover:shadow-xl transition-all group relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                             <button onclick="viewUser('${u.id}')" class="p-3 bg-white text-emerald-600 rounded-2xl shadow-sm hover:bg-emerald-600 hover:text-white transition-all" title="Lihat Detail"><i data-lucide="eye" width="16" height="16"></i></button>
+                             <button onclick="editUser('${u.id}')" class="p-3 bg-white text-indigo-600 rounded-2xl shadow-sm hover:bg-indigo-600 hover:text-white transition-all" title="Edit Data"><i data-lucide="edit-2" width="16" height="16"></i></button>
+                             <button onclick="deleteUser('${u.id}')" class="p-3 bg-white text-rose-600 rounded-2xl shadow-sm hover:bg-rose-600 hover:text-white transition-all" title="Hapus Data"><i data-lucide="trash-2" width="16" height="16"></i></button>
+                        </div>
+                        <div class="flex items-center gap-5 mb-5">
+                            <img src="${u.avatar}" class="w-16 h-16 rounded-[1.5rem] bg-white shadow-sm object-cover" />
+                            <div>
+                                <h4 class="text-lg font-black text-slate-800 leading-tight">${u.name}</h4>
+                                <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">${u.position}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-5">
+                             <div class="bg-white p-3 rounded-2xl text-center border border-slate-100">
+                                 <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">NIK</p>
+                                 <p class="text-xs font-black text-slate-700">${u.nid}</p>
+                             </div>
+                             <div class="bg-white p-3 rounded-2xl text-center border border-slate-100">
+                                 <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">Shift</p>
+                                 <p class="text-xs font-black text-emerald-600">${u.shiftGroup}</p>
+                             </div>
+                        </div>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+
+            // Events
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                render();
+            });
+            document.getElementById('filter-shift').addEventListener('change', (e) => {
+                filterShift = e.target.value;
+                render();
+            });
+
+            // Init
+            updateStats();
+            render();
+
+            // --- Handlers ---
+
+            window.handleReset = () => {
+                if (!confirm('PERINGATAN KERAS:\nApakah Anda yakin ingin MENGHAPUS SEMUA DATA?\n\nTindakan ini akan menghapus:\n- Semua Data Karyawan\n- Semua Data Presensi (Log Masuk/Pulang)\n- Semua Data Gaji\n- Semua Riwayat Request Izin/Cuti\n\nData tidak dapat dikembalikan!')) return;
+
+                const KEYS = ['PK_USERS_V2', 'PK_USERS', 'PK_PAYROLLS', 'PK_ATTENDANCE', 'PK_REQUESTS', 'SCHEDULE_OVERRIDES', 'PK_SETTINGS'];
+                KEYS.forEach(k => localStorage.removeItem(k));
+                localStorage.removeItem('users'); // legacy
+                localStorage.removeItem('presensi_user'); // logout
+
+                alert('Sistem berhasil di-reset total.\nSilakan login kembali dan import data karyawan baru.');
+                location.href = 'index.html';
+            };
+
+            // --- CSV Handling ---
+
+            window.downloadTemplate = () => {
+                // Capitalized headers for better readability
+                const headers = ['NID', 'Name', 'Email', 'Role', 'Division', 'Position', 'WorkUnit', 'ShiftGroup', 'JoinDate'];
+                const example = ['EMP001', 'John Doe', 'john@example.com', 'EMPLOYEE', 'IT', 'Staff Engineer', 'Pusat', 'SHIFT A', '2023-01-01'];
+
+                // Add 'sep=;' directive for Excel to strictly enforce column separation
+                // Use \r\n for Windows compatibility
+                const csvContent = "data:text/csv;charset=utf-8,sep=;\r\n" + headers.join(";") + "\r\n" + example.join(";");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "template_karyawan.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const parseCSV = (text) => {
+                const lines = text.split(/\r\n|\n/); // Handle both CRLF and LF
+                const result = [];
+
+                // Determine start row and delimiter
+                let startRow = 0;
+                let delimiter = ','; // Default
+
+                if (lines[0].trim().startsWith('sep=')) {
+                    delimiter = lines[0].trim().split('=')[1];
+                    startRow = 1;
+                } else if (lines[0].includes(';')) {
+                    delimiter = ';';
+                }
+
+                // Get Headers
+                const headerLine = lines[startRow];
+                if (!headerLine) return [];
+
+                // Normalize headers to lowercase for easy matching
+                const headers = headerLine.split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]+/g, ''));
+
+                const getIdx = (key) => headers.findIndex(h => h === key || h.includes(key));
+
+                // Map based on user's specific table image requirements
+                const map = {
+                    nid: getIdx('nid'),
+                    name: getIdx('name'),
+                    email: getIdx('email'),
+                    role: getIdx('role'),
+                    div: getIdx('division') > -1 ? getIdx('division') : getIdx('divisi'),
+                    pos: getIdx('position') > -1 ? getIdx('position') : getIdx('jabatan'),
+                    unit: getIdx('workunit') > -1 ? getIdx('workunit') : getIdx('unit'),
+                    shift: getIdx('shiftgroup') > -1 ? getIdx('shiftgroup') : getIdx('shift'),
+                    join: getIdx('joindate') > -1 ? getIdx('joindate') : getIdx('join')
+                };
+
+                for (let i = startRow + 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+
+                    // Basic CSV split
+                    const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''));
+
+                    // Helpers to safely get data
+                    const val = (idx, def = '') => idx > -1 && cols[idx] ? cols[idx] : def;
+
+                    const nid = val(map.nid);
+                    if (!nid) continue; // Skip if no NID
+
+                    result.push({
+                        id: 'emp_' + Math.random().toString(36).substr(2, 9),
+                        nid: nid,
+                        name: val(map.name, 'Tanpa Nama'),
+                        email: val(map.email, `${nid.toLowerCase()}@presensi.com`),
+                        role: val(map.role, 'EMPLOYEE').toUpperCase(),
+                        division: val(map.div, 'Umum'),
+                        position: val(map.pos, 'Staff'),
+                        workUnit: val(map.unit, 'Pusat'),
+                        shiftGroup: normalize(val(map.shift, 'REGULER')),
+                        joinDate: val(map.join, new Date().toISOString().split('T')[0]),
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(val(map.name))}&background=random`
+                    });
+                }
+                return result;
+            };
+
+            document.getElementById('file-upload').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const newUsers = parseCSV(evt.target.result);
+                        if (newUsers.length === 0) throw new Error('Format CSV tidak valid atau kosong.');
+
+                        // Deduplication: Filter out existing NIDs
+                        const existingNids = new Set(StorageManager.getUsers().map(u => u.nid));
+                        const uniqueNewUsers = newUsers.filter(u => !existingNids.has(u.nid));
+
+                        if (uniqueNewUsers.length === 0) {
+                            alert('Semua data dalam CSV sudah ada di database (NID duplikat).');
+                            return;
+                        }
+
+                        // Save
+                        const currentUsers = StorageManager.getUsers();
+                        const updatedUsers = [...currentUsers, ...uniqueNewUsers];
+                        // Ensure we save properly using the Manager which uses PK_USERS_V2
+                        StorageManager.saveUsers(updatedUsers);
+
+                        alert(`Berhasil mengimpor ${uniqueNewUsers.length} karyawan baru.`);
+                        location.reload();
+                    } catch (err) {
+                        alert('Gagal import CSV: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            // --- Modal Form Logic ---
+            window.showForm = (editId = null) => {
+                const isEdit = !!editId;
+                let userData = {};
+
+                if (isEdit) {
+                    userData = users.find(u => u.id === editId);
+                    if (!userData) return;
+                }
+
+                const modalHTML = `
+                    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                        <div class="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+                             <div class="bg-indigo-950 p-10 text-white flex justify-between items-center relative overflow-hidden">
+                                <div class="absolute top-0 right-0 p-8 opacity-10">
+                                   <i data-lucide="${isEdit ? 'user-check' : 'user-plus'}" width="160" height="160"></i>
+                                </div>
+                                
+                                <div class="flex items-center gap-6 z-10">
+                                   <div class="p-4 bg-indigo-600 rounded-2xl shadow-xl">
+                                      <i data-lucide="${isEdit ? 'edit' : 'plus'}" width="28" height="28"></i>
+                                   </div>
+                                   <div>
+                                     <h3 class="text-2xl font-black uppercase tracking-tight">${isEdit ? 'Edit Karyawan' : 'Tambah Karyawan'}</h3>
+                                     <p class="text-indigo-400 font-bold text-xs uppercase tracking-widest">${isEdit ? 'Perbarui data karyawan' : 'Input data karyawan baru'}</p>
+                                   </div>
+                                </div>
+                                <button id="close-modal-btn" class="p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all z-10"><i data-lucide="x" width="24" height="24"></i></button>
+                             </div>
+
+                             <form id="employee-form" class="p-10 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                                <input type="hidden" name="id" value="${userData.id || ''}">
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nomor Induk (NID)</label>
+                                        <input name="nid" value="${userData.nid || ''}" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all" placeholder="Contoh: EMP001" required>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label>
+                                        <input name="name" value="${userData.name || ''}" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all" placeholder="Nama Karyawan" required>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+                                        <input type="email" name="email" value="${userData.email || ''}" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all" placeholder="email@contoh.com" required>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Role (Hak Akses)</label>
+                                        <select name="role" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all cursor-pointer">
+                                            ${Object.values(UserRole).map(role => `<option value="${role}">${role}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</label>
+                                        <input name="division" value="${userData.division || ''}" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all" placeholder="Contoh: Operasional" required>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jabatan / Posisi</label>
+                                        <input name="position" value="${userData.position || ''}" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all" placeholder="Contoh: Staff" required>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Kerja</label>
+                                        <input name="workUnit" value="${userData.workUnit || ''}" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all" placeholder="Contoh: Pusat" required>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tanggal Bergabung</label>
+                                        <input type="date" name="joinDate" value="${userData.joinDate || new Date().toISOString().split('T')[0]}" class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-sm focus:ring-4 focus:ring-indigo-50 outline-none transition-all" required>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pengaturan Shift</label>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        ${Object.values(ShiftGroup).map(sg => `
+                                            <label class="cursor-pointer relative group">
+                                                <input type="radio" name="shiftGroup" value="${sg}" class="peer sr-only" ${(!userData.shiftGroup && sg === 'Reguler') || userData.shiftGroup === sg ? 'checked' : ''}>
+                                                <div class="p-4 bg-slate-50 border-2 border-transparent rounded-2xl text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all hover:bg-slate-100">
+                                                    <span class="text-xs font-black uppercase text-slate-600 peer-checked:text-indigo-600">${sg}</span>
+                                                </div>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <div class="pt-6 flex gap-4">
+                                   <button type="button" id="cancel-modal-btn" class="flex-1 py-4 bg-slate-100 text-slate-500 font-bold rounded-2xl hover:bg-slate-200 transition-all">Batal</button>
+                                   <button type="submit" class="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
+                                      ${isEdit ? 'Simpan Perubahan' : 'Tambah Karyawan'}
+                                   </button>
+                                </div>
+                             </form>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('modal-container').innerHTML = modalHTML;
+                lucide.createIcons();
+
+                // Set select values manually if editing
+                if (isEdit) {
+                    if (userData.role) {
+                        const selectRole = document.querySelector('select[name="role"]');
+                        if (selectRole) selectRole.value = userData.role;
+                    }
+                }
+
+                // Handle Close
+                const closeModal = () => document.getElementById('modal-container').innerHTML = '';
+                document.getElementById('close-modal-btn').onclick = closeModal;
+                document.getElementById('cancel-modal-btn').onclick = closeModal;
+
+                // Handle Submit
+                document.getElementById('employee-form').onsubmit = (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+
+                    const newUser = {
+                        id: formData.get('id') || 'emp_' + Math.random().toString(36).substr(2, 9),
+                        nid: formData.get('nid'),
+                        name: formData.get('name'),
+                        role: formData.get('role'),
+                        email: formData.get('email'),
+                        division: formData.get('division'),
+                        position: formData.get('position'),
+                        workUnit: formData.get('workUnit'),
+                        shiftGroup: formData.get('shiftGroup'),
+                        joinDate: formData.get('joinDate'),
+                        avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.get('name'))}&background=random`
+                    };
+
+                    StorageManager.upsertUser(newUser);
+
+                    alert(isEdit ? 'Data karyawan berhasil diperbarui!' : 'Karyawan baru berhasil ditambahkan!');
+                    closeModal();
+
+                    // Refresh Data & UI
+                    users = StorageManager.getUsers().filter(u => u.role !== 'ADMIN');
+                    updateStats();
+                    render();
+                };
+            };
+
+            // Edit User Hook
+            window.editUser = (id) => {
+                showForm(id);
+            };
+        }
+    </script>
+</body>
+
+</html>

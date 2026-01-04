@@ -1,0 +1,8 @@
+{
+  "name": "PresensiKita Pro",
+  "description": "A modern, responsive employee attendance management system featuring geofencing, selfie validation, real-time dashboards, and AI-powered insights.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PresensiKita Pro - Penggajian</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .custom-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <div id="app-container" class="flex min-h-screen bg-slate-50">
+    <div id="sidebar-container"></div>
+
+    <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
+      <div id="content-container" class="space-y-8 mt-16 lg:mt-0 pb-12">
+        <!-- Content injected by JS -->
+        <div class="flex items-center justify-center min-h-[60vh]">
+          <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, logout } from './js/auth.js';
+    import { renderSidebar } from './js/components.js';
+    import { UserRole, StorageManager } from './js/data.js';
+
+    const user = requireAuth();
+    if (user) {
+      document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
+
+      // Mobile Menu Logic
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+      const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
+      const logoutBtn = document.getElementById('logout-btn');
+
+      if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+          mobileOverlay.classList.remove('hidden');
+        });
+      }
+      if (closeMobileSidebar) {
+        closeMobileSidebar.addEventListener('click', () => {
+          mobileOverlay.classList.add('hidden');
+        });
+      }
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+      }
+
+      // --- PAYROLL LOGIC ---
+      const isAdmin = user.role === UserRole.ADMIN;
+      let selectedPeriod = new Date().toISOString().slice(0, 7); // YYYY-MM
+      let searchTerm = '';
+
+      // Format Currency
+      const formatRupiah = (number) => {
+        return new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0
+        }).format(number);
+      };
+
+      // Logic: Get or Init Payrolls
+      const getPayrollData = () => {
+        const payrolls = StorageManager.getPayrolls() || []; // Fallback to empty array
+        return payrolls; // In real app, maybe filter valid ones
+      };
+
+      const savePayrollData = (data) => {
+        StorageManager.savePayrolls(data);
+      };
+
+      // Calculate THP
+      const calculateTHP = (p) => {
+        const totalAllowances = Object.values(p.allowances || {}).reduce((a, b) => a + b, 0);
+        const totalDeductions = Object.values(p.deductions || {}).reduce((a, b) => a + b, 0);
+        return (p.baseSalary || 0) + totalAllowances - totalDeductions;
+      };
+
+      // Generate Drafts for a Period
+      window.handleGenerate = () => {
+        if (!confirm(`Buat draft gaji untuk periode ${selectedPeriod}?`)) return;
+
+        const users = StorageManager.getUsers();
+        const activeWrapper = users;
+
+        let payrolls = getPayrollData();
+        let count = 0;
+
+        activeWrapper.forEach(u => {
+          const exists = payrolls.find(p => p.userId === u.id && p.period === selectedPeriod);
+          if (!exists) {
+            payrolls.push({
+              id: 'PAY-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+              userId: u.id,
+              user: u.name,
+              period: selectedPeriod,
+              baseSalary: 0,
+              allowances: {
+                'Tunjangan Tetap': 0,
+                'Tunjangan Masa Kerja/Pulsa': 0,
+                'Tunjangan Jabatan': 0,
+                'Lembur': 0,
+                'Premi Shift': 0,
+                'Uang Makan Lembur': 0,
+                'Insentif': 0,
+                'Piket Sabtu Minggu': 0,
+                'Piket Hari Besar': 0,
+                'On Call': 0,
+                'Bantuan Uang Makan': 0,
+                'Suplisi/Selisih': 0
+              },
+              deductions: {
+                'BPJS': 0,
+                'SP': 0,
+                'Terlambat': 0
+              },
+              status: 'DRAFT',
+              generatedAt: new Date().toISOString()
+            });
+            count++;
+          }
+        });
+
+        savePayrollData(payrolls);
+        render();
+      };
+
+      // Publish All
+      window.handlePublishAll = () => {
+        if (!confirm(`Terbitkan semua slip gaji untuk periode ${selectedPeriod}? Karyawan akan dapat melihat slip mereka.`)) return;
+
+        let payrolls = getPayrollData();
+        payrolls.forEach(p => {
+          if (p.period === selectedPeriod && p.status === 'DRAFT') {
+            p.status = 'PUBLISHED';
+          }
+        });
+        savePayrollData(payrolls);
+        render();
+      };
+
+      const ALLOWANCE_KEYS = [
+        'Tunjangan Tetap', 'Tunjangan Masa Kerja/Pulsa', 'Tunjangan Jabatan',
+        'Lembur', 'Premi Shift', 'Uang Makan Lembur',
+        'Insentif', 'Piket Sabtu Minggu', 'Piket Hari Besar',
+        'On Call', 'Bantuan Uang Makan', 'Suplisi/Selisih'
+      ];
+
+      const DEDUCTION_KEYS = ['BPJS', 'SP', 'Terlambat'];
+
+      // Helper for Input Formatting (1000 -> 1.000)
+      const formatNumberForInput = (num) => {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      };
+
+      // Edit Salary Modal
+      window.editPayroll = (id) => {
+        const payrolls = getPayrollData();
+        const p = payrolls.find(x => x.id === id);
+        if (!p) return;
+
+        // Ensure defaults
+        if (!p.allowances) p.allowances = {};
+        if (!p.deductions) p.deductions = {};
+
+        const modalHTML = `
+                    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                        <div class="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                             <div class="bg-indigo-600 p-8 text-white flex justify-between items-center sticky top-0 z-10">
+                                <div>
+                                    <h3 class="text-2xl font-black uppercase tracking-tight">Edit Gaji</h3>
+                                    <p class="text-indigo-200 font-bold text-xs uppercase tracking-widest">${p.user} — ${p.period}</p>
+                                </div>
+                                <button onclick="document.getElementById('modal-container').innerHTML = ''" class="p-2 bg-white/20 hover:bg-white/40 rounded-xl transition-all"><i data-lucide="x" width="20" height="20"></i></button>
+                             </div>
+                             
+                             <form id="edit-payroll-form" class="p-8 space-y-8">
+                                <!-- Base Salary -->
+                                <div class="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Gaji Pokok</label>
+                                    <input type="text" name="baseSalary" value="${formatNumberForInput(p.baseSalary)}" 
+                                           oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')"
+                                           class="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl font-black text-2xl text-slate-800 outline-none focus:border-indigo-500 transition-all">
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <!-- Allowances (P1) -->
+                                    <div class="space-y-4">
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><i data-lucide="trending-up" width="18" height="18"></i></div>
+                                            <h4 class="text-sm font-black text-slate-800 uppercase tracking-widest">P1 - Pendapatan</h4>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            ${ALLOWANCE_KEYS.map(key => `
+                                                <div class="group">
+                                                    <label class="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 group-hover:text-emerald-600 transition-colors truncate block" title="${key}">${key}</label>
+                                                    <input type="text" name="allowance_${key}" value="${formatNumberForInput(p.allowances[key] || 0)}" 
+                                                           oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')"
+                                                           class="w-full px-4 py-3 bg-emerald-50/30 border border-emerald-100 rounded-xl font-bold text-sm text-slate-700 outline-none focus:bg-white focus:border-emerald-400 transition-all">
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <!-- Deductions (B) -->
+                                    <div class="space-y-4">
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-rose-100 text-rose-600 rounded-lg"><i data-lucide="trending-down" width="18" height="18"></i></div>
+                                            <h4 class="text-sm font-black text-slate-800 uppercase tracking-widest">B - Potongan</h4>
+                                        </div>
+                                        <div class="space-y-4">
+                                             ${DEDUCTION_KEYS.map(key => `
+                                                <div class="group">
+                                                    <label class="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1 group-hover:text-rose-600 transition-colors">${key}</label>
+                                                    <input type="text" name="deduction_${key}" value="${formatNumberForInput(p.deductions[key] || 0)}" 
+                                                           oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')"
+                                                           class="w-full px-4 py-3 bg-rose-50/30 border border-rose-100 rounded-xl font-bold text-sm text-slate-700 outline-none focus:bg-white focus:border-rose-400 transition-all">
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="pt-6 border-t border-slate-100">
+                                     <button type="submit" class="w-full py-5 bg-slate-900 text-white font-black rounded-[2rem] hover:bg-slate-800 transition-all uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2">
+                                        <i data-lucide="save" width="18" height="18"></i> Simpan Perubahan
+                                     </button>
+                                </div>
+                             </form>
+                        </div>
+                    </div>
+                `;
+        document.getElementById('modal-container').innerHTML = modalHTML;
+        lucide.createIcons();
+
+        document.getElementById('edit-payroll-form').onsubmit = (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+
+          const parseFormatted = (val) => parseFloat((val || '0').replace(/\./g, '')) || 0;
+
+          p.baseSalary = parseFormatted(fd.get('baseSalary'));
+
+          // Update Allowances with new schema
+          ALLOWANCE_KEYS.forEach(key => {
+            p.allowances[key] = parseFormatted(fd.get(`allowance_${key}`));
+          });
+
+          // Update Deductions with new schema
+          DEDUCTION_KEYS.forEach(key => {
+            p.deductions[key] = parseFormatted(fd.get(`deduction_${key}`));
+          });
+
+          const allPayrolls = getPayrollData();
+          const idx = allPayrolls.findIndex(x => x.id === id);
+          if (idx !== -1) allPayrolls[idx] = p;
+
+          savePayrollData(allPayrolls);
+          document.getElementById('modal-container').innerHTML = '';
+          render();
+        };
+      };
+
+      // Delete Payroll
+      window.deletePayroll = (id) => {
+        if (!confirm('Hapus data gaji ini?')) return;
+        let payrolls = getPayrollData();
+        payrolls = payrolls.filter(p => p.id !== id);
+        savePayrollData(payrolls);
+        render();
+      };
+
+      // View Payslip (Employee & Admin)
+      window.viewPayslip = (id) => {
+        const payrolls = getPayrollData();
+        const p = payrolls.find(x => x.id === id);
+        if (!p) return;
+
+        // Ensure defaults
+        if (!p.allowances) p.allowances = {};
+        if (!p.deductions) p.deductions = {};
+
+        // Calculate totals dynamically based on schema
+        let totalAllowances = 0;
+        ALLOWANCE_KEYS.forEach(k => totalAllowances += (p.allowances[k] || 0));
+
+        let totalDeductions = 0;
+        DEDUCTION_KEYS.forEach(k => totalDeductions += (p.deductions[k] || 0));
+
+        const thp = (p.baseSalary || 0) + totalAllowances - totalDeductions;
+
+        const modalHTML = `
+                    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                             <!-- Header Ticket Style -->
+                             <div class="bg-slate-900 p-8 text-center relative overflow-hidden">
+                                 <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                                 <div class="relative z-10">
+                                     <h2 class="text-2xl font-black text-white uppercase tracking-tight">PresensiKita</h2>
+                                     <p class="text-slate-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">E-Payslip System</p>
+                                     <div class="mt-6 inline-block bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-sm border border-white/10">
+                                         <p class="text-white text-xs font-bold uppercase tracking-widest">${p.period}</p>
+                                     </div>
+                                 </div>
+                                 <!-- Circle Cuts -->
+                                 <div class="absolute -bottom-4 -left-4 w-8 h-8 bg-white rounded-full"></div>
+                                 <div class="absolute -bottom-4 -right-4 w-8 h-8 bg-white rounded-full"></div>
+                             </div>
+
+                             <div class="p-8">
+                                 <div class="text-center mb-8 border-b border-dashed border-slate-200 pb-8">
+                                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Penerima</p>
+                                     <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">${p.user}</h3>
+                                     <span class="inline-block mt-2 px-3 py-1 bg-${p.status === 'PUBLISHED' ? 'emerald' : 'amber'}-100 text-${p.status === 'PUBLISHED' ? 'emerald' : 'amber'}-700 text-[9px] font-black rounded-lg uppercase tracking-widest">${p.status}</span>
+                                 </div>
+
+                                 <div class="space-y-6">
+                                     <!-- Income -->
+                                     <div>
+                                         <h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><div class="w-1 h-3 bg-emerald-500 rounded-full"></div> Pendapatan</h4>
+                                         <div class="space-y-2">
+                                             <div class="flex justify-between text-sm">
+                                                 <span class="text-slate-500 font-medium">Gaji Pokok</span>
+                                                 <span class="font-bold text-slate-800">${formatRupiah(p.baseSalary)}</span>
+                                             </div>
+                                             ${ALLOWANCE_KEYS.map(k => {
+          const val = p.allowances[k] || 0;
+          if (val === 0) return '';
+          return `
+                                                    <div class="flex justify-between text-sm">
+                                                        <span class="text-slate-500 font-medium">${k}</span>
+                                                        <span class="font-bold text-slate-800">${formatRupiah(val)}</span>
+                                                    </div>
+                                                 `;
+        }).join('')}
+                                              <div class="flex justify-between text-sm pt-2 border-t border-slate-100">
+                                                 <span class="text-emerald-600 font-bold text-xs uppercase">Total Pendapatan</span>
+                                                 <span class="font-black text-emerald-600">${formatRupiah(p.baseSalary + totalAllowances)}</span>
+                                             </div>
+                                         </div>
+                                     </div>
+
+                                     <!-- Deductions -->
+                                     <div>
+                                         <h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><div class="w-1 h-3 bg-rose-500 rounded-full"></div> Potongan</h4>
+                                         <div class="space-y-2">
+                                             ${DEDUCTION_KEYS.map(k => {
+          const val = p.deductions[k] || 0;
+          if (val === 0) return '';
+          return `
+                                                    <div class="flex justify-between text-sm">
+                                                        <span class="text-slate-500 font-medium">${k}</span>
+                                                        <span class="font-bold text-rose-600">-${formatRupiah(val)}</span>
+                                                    </div>
+                                                 `;
+        }).join('')}
+                                              <div class="flex justify-between text-sm pt-2 border-t border-slate-100">
+                                                 <span class="text-rose-600 font-bold text-xs uppercase">Total Potongan</span>
+                                                 <span class="font-black text-rose-600">-${formatRupiah(totalDeductions)}</span>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+
+                                 <!-- THP -->
+                                 <div class="bg-slate-900 rounded-[2rem] p-6 text-center mt-8 shadow-xl">
+                                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Take Home Pay</p>
+                                     <h2 class="text-3xl font-black text-white tracking-tighter">${formatRupiah(thp)}</h2>
+                                 </div>
+                                 
+                                 <button onclick="document.getElementById('modal-container').innerHTML = ''" class="w-full mt-6 py-4 bg-slate-100 text-slate-400 hover:bg-slate-200 font-black rounded-xl uppercase tracking-widest text-xs transition-colors">Tutup</button>
+                             </div>
+                        </div>
+                    </div>
+                `;
+        document.getElementById('modal-container').innerHTML = modalHTML;
+      }
+
+
+      const render = () => {
+        const container = document.getElementById('content-container');
+        const payrolls = getPayrollData();
+
+        // ADMIN VIEW
+        if (isAdmin) {
+          const periodPayrolls = payrolls.filter(p => p.period === selectedPeriod).filter(p => p.user.toLowerCase().includes(searchTerm.toLowerCase()));
+          const totalEstimasi = periodPayrolls.reduce((sum, p) => sum + calculateTHP(p), 0);
+          const draftCount = periodPayrolls.filter(p => p.status === 'DRAFT').length;
+
+          container.innerHTML = `
+                         <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                            <div>
+                                <h2 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Penggajian Karyawan</h2>
+                                <p class="text-slate-500 font-medium mt-1">Kelola dan otorisasi pembayaran gaji periode ini.</p>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="bg-white border border-slate-200 px-5 py-3 rounded-2xl text-right">
+                                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Estimasi</p>
+                                    <p class="text-lg font-black text-slate-800">${formatRupiah(totalEstimasi)}</p>
+                                </div>
+                                <button onclick="window.handleGenerate()" class="px-8 py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 active:scale-95 transition-all text-xs tracking-widest uppercase flex items-center gap-2">
+                                    <i data-lucide="zap" width="16" height="16"></i> Generate Slip
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                         <div class="bg-white p-4 rounded-[1.5rem] shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <input type="month" value="${selectedPeriod}" onchange="selectedPeriod = this.value; render();" class="px-4 py-2 bg-slate-50 border-none rounded-xl font-bold text-sm text-slate-700 outline-none">
+                                ${draftCount > 0 ? `
+                                    <div class="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <i data-lucide="alert-circle" width="14" height="14"></i> ${draftCount} Menunggu Approval
+                                    </div>
+                                    <button onclick="window.handlePublishAll()" class="px-4 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors">
+                                        Publish Semua
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div class="relative w-full md:w-64">
+                                <i data-lucide="search" width="16" height="16" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="text" placeholder="Cari karyawan..." oninput="searchTerm = this.value; render();" class="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-xs text-slate-700 outline-none transition-all focus:ring-2 focus:ring-indigo-100 placeholder:font-medium">
+                            </div>
+                        </div>
+
+                        <!-- Table -->
+                        ${periodPayrolls.length === 0 ? `
+                             <div class="py-20 text-center">
+                                <div class="inline-flex p-6 bg-slate-50 rounded-[2rem] mb-4 text-slate-300">
+                                    <i data-lucide="banknote" width="48" height="48"></i>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-900 uppercase tracking-tight">Belum Ada Data Gaji</h3>
+                                <p class="text-slate-500 text-sm mt-2 font-medium">Klik "Generate Slip" untuk membuat draft gaji periode ${selectedPeriod}.</p>
+                            </div>
+                        ` : `
+                        <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                            <th class="p-5 pl-8">Karyawan</th>
+                                            <th class="p-5">Gaji Pokok</th>
+                                            <th class="p-5">Tunjangan</th>
+                                            <th class="p-5">Potongan</th>
+                                            <th class="p-5">Total (THP)</th>
+                                            <th class="p-5">Status</th>
+                                            <th class="p-5 pr-8 text-right">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-50">
+                                        ${periodPayrolls.map(p => {
+            const totalAllowances = Object.values(p.allowances).reduce((a, b) => a + b, 0);
+            const totalDeductions = Object.values(p.deductions).reduce((a, b) => a + b, 0);
+            const thp = calculateTHP(p);
+            return `
+                                            <tr class="group hover:bg-slate-50 transition-colors">
+                                                <td class="p-5 pl-8">
+                                                    <p class="font-bold text-sm text-slate-800">${p.user}</p>
+                                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${p.period}</p>
+                                                </td>
+                                                <td class="p-5 text-sm font-medium text-slate-600">${formatRupiah(p.baseSalary)}</td>
+                                                <td class="p-5 text-sm font-medium text-emerald-600">+${formatRupiah(totalAllowances)}</td>
+                                                <td class="p-5 text-sm font-medium text-rose-600">-${formatRupiah(totalDeductions)}</td>
+                                                <td class="p-5 font-black text-sm text-slate-800">${formatRupiah(thp)}</td>
+                                                <td class="p-5">
+                                                    <span class="inline-flex px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${p.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+              }">${p.status}</span>
+                                                </td>
+                                                <td class="p-5 pr-8 text-right space-x-2">
+                                                    <button onclick="window.viewPayslip('${p.id}')" class="p-2 text-indigo-400 hover:text-indigo-600 transition-colors" title="Lihat"><i data-lucide="eye" width="16" height="16"></i></button>
+                                                    <button onclick="window.editPayroll('${p.id}')" class="p-2 text-slate-400 hover:text-indigo-600 transition-colors" title="Edit"><i data-lucide="edit-2" width="16" height="16"></i></button>
+                                                    <button onclick="window.deletePayroll('${p.id}')" class="p-2 text-slate-400 hover:text-rose-600 transition-colors" title="Hapus"><i data-lucide="trash-2" width="16" height="16"></i></button>
+                                                </td>
+                                            </tr>
+                                            `;
+          }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        `}
+                    `;
+        } else {
+          // EMPLOYEE VIEW
+          const myPayrolls = payrolls.filter(p => p.userId === user.id && p.status === 'PUBLISHED').reverse(); // Show only published
+
+          container.innerHTML = `
+                         <div class="mb-10">
+                            <h2 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Slip Gaji Saya</h2>
+                            <p class="text-slate-500 font-medium mt-1">Riwayat pembayaran gaji dan pendapatan Anda.</p>
+                        </div>
+
+                        ${myPayrolls.length === 0 ? `
+                             <div class="py-20 text-center bg-white rounded-[3rem] border border-slate-100 shadow-sm">
+                                <div class="inline-flex p-6 bg-slate-50 rounded-[2rem] mb-4 text-slate-300">
+                                    <i data-lucide="search-x" width="48" height="48"></i>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-900 uppercase tracking-tight">Belum Ada Slip Gaji</h3>
+                                <p class="text-slate-500 text-sm mt-2 font-medium">Data gaji akan muncul setelah diterbitkan oleh Admin.</p>
+                            </div>
+                        ` : `
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${myPayrolls.map(p => `
+                                <div onclick="window.viewPayslip('${p.id}')" class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden">
+                                    <div class="absolute top-0 right-0 p-6 opacity-50 group-hover:opacity-100 transition-opacity">
+                                        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                                             <i data-lucide="receipt" width="20" height="20"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Periode</p>
+                                        <h3 class="text-2xl font-black text-slate-800 tracking-tighter">${p.period}</h3>
+                                    </div>
+                                    <div class="mt-8 pt-6 border-t border-slate-50 flex justify-between items-end">
+                                        <div>
+                                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Penerimaan</p>
+                                             <p class="text-lg font-black text-emerald-600 tracking-tight">${formatRupiah(calculateTHP(p))}</p>
+                                        </div>
+                                        <span class="text-xs font-black text-indigo-500 uppercase tracking-widest group-hover:translate-x-1 transition-transform">Lihat Detail &rarr;</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        `}
+                    `;
+        }
+
+        lucide.createIcons();
+      };
+
+      // Initial Render
+      render();
+    }
+  </script>
+</body>
+
+</html>

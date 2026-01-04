@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PresensiKita Pro - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+    <div id="app-container" class="flex min-h-screen bg-slate-50">
+        <!-- Sidebar container -->
+        <div id="sidebar-container"></div>
+
+        <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
+            <div id="dashboard-content" class="space-y-6 md:space-y-8 mt-16 lg:mt-0 pb-12">
+                <!-- Content injected by JS -->
+                <div class="flex items-center justify-center min-h-[60vh]">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { requireAuth, logout } from './js/auth.js';
+        import { renderSidebar } from './js/components.js';
+        import { UserRole, SHIFT_DEFINITIONS, ShiftType, getPayrolls, getAttendance, getRequests, StorageManager } from './js/data.js';
+        import { calculateTenure, getShiftGroup } from './js/utils.js';
+
+        const user = requireAuth();
+
+        if (user) {
+            // Render Sidebar
+            document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
+
+            // Re-initialize icons for sidebar
+            lucide.createIcons();
+
+            // Mobile Menu Logic
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+            const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', () => {
+                    mobileOverlay.classList.remove('hidden');
+                });
+            }
+            if (closeMobileSidebar) {
+                closeMobileSidebar.addEventListener('click', () => {
+                    mobileOverlay.classList.add('hidden');
+                });
+            }
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', logout);
+            }
+
+
+            // Dashboard Logic
+            const isAdmin = user.role === UserRole.ADMIN;
+
+            // --- REAL DATA FETCHING ---
+            const allAttendance = StorageManager.getAttendance();
+            const allUsers = StorageManager.getUsers();
+            const allRequests = StorageManager.getRequests();
+
+            // Calculate Today's Stats
+            // Calculate Today's Stats
+            const today = new Date().toISOString().split('T')[0];
+
+            // Pending Requests for Admin
+            const pendingReqs = allRequests.filter(r => r.status === 'PENDING' || r.status === 'CANCEL_REQ');
+
+            const todayStats = {
+                hadir: allAttendance.filter(a => a.date === today && a.status === 'PRESENT').length,
+                telat: allAttendance.filter(a => a.date === today && a.status === 'LATE').length,
+                // Breakdown for Admin
+                reqCuti: pendingReqs.filter(r => r.type.includes('CUTI')).length,
+                reqSakit: pendingReqs.filter(r => r.type.includes('SAKIT')).length,
+                reqIzin: pendingReqs.filter(r => r.type.includes('IZIN') || r.type.includes('PP') || r.type.includes('LEMBUR')).length,
+                reqDinas: pendingReqs.filter(r => r.type.includes('DINAS')).length,
+                total: allUsers.length
+            };
+
+            // Helper to calculate days between dates (inclusive)
+            // ... (keep helper and userStats logic same, just skipping lines in replace block usually, but here I need to reach the render block)
+            // Actually, I can just replace the todayStats block and the render block separately, or do a larger replace. 
+            // Given previous tool behavior, safer to do the specific blocks.
+            // I will replace todayStats first, then the grid.
+            // Wait, I can do it in one go if I include the intermediate lines. 
+            // But the userStats logic follows immediately.
+            // I'll just replace the `todayStats` definition block first.
+
+
+            // Helper to calculate days between dates (inclusive)
+            const calculateDays = (start, end) => {
+                const s = new Date(start);
+                const e = new Date(end);
+                return Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
+            };
+
+            // User Specific Stats
+            const userAttendance = allAttendance.filter(a => a.userId === user.id);
+            const userRequests = allRequests.filter(r => r.userId === user.id && r.status === 'APPROVED');
+
+            // Calculate totals from requests
+            // Calculate totals from requests
+            // Calculate totals from requests
+            // Calculate totals from requests
+            const totalCutiRequests = userRequests
+                .filter(r => r.type.includes('CUTI'))
+                .reduce((acc, r) => acc + calculateDays(r.start || r.startDate, r.end || r.endDate), 0);
+
+            const totalSakitRequests = userRequests
+                .filter(r => r.type.includes('SAKIT'))
+                .reduce((acc, r) => acc + calculateDays(r.start || r.startDate, r.end || r.endDate), 0);
+
+            const totalIzinRequests = userRequests
+                .filter(r => r.type.includes('IZIN'))
+                .reduce((acc, r) => acc + calculateDays(r.start || r.startDate, r.end || r.endDate), 0);
+
+            const totalDinasRequests = userRequests
+                .filter(r => r.type.includes('DINAS'))
+                .reduce((acc, r) => acc + calculateDays(r.start || r.startDate, r.end || r.endDate), 0);
+
+            const userStats = {
+                hadir: userAttendance.filter(a => a.status === 'PRESENT').length,
+                telat: userAttendance.filter(a => a.status === 'LATE').length,
+                // Combine stats from Attendance log (historical) AND Requests (official record)
+                cuti: totalCutiRequests || userAttendance.filter(a => a.status === 'LEAVE').length,
+                sakit: totalSakitRequests || userAttendance.filter(a => a.status === 'SICK').length,
+                izin: totalIzinRequests || userAttendance.filter(a => a.status === 'PERMISSION').length, // Assuming PERMISSION status exists or fallback to 0
+                dinas: totalDinasRequests || userAttendance.filter(a => a.status === 'BUSINESS_TRIP').length,
+            };
+
+            // Get Active Shift
+            const getActiveShift = () => {
+                const now = new Date();
+                const totalMinutes = now.getHours() * 60 + now.getMinutes();
+                for (const shift of SHIFT_DEFINITIONS) {
+                    if (shift.type === ShiftType.LIBUR || shift.type === ShiftType.REGULER) continue;
+                    const [startH, startM] = shift.startTime.split(':').map(Number);
+                    const [endH, endM] = shift.endTime.split(':').map(Number);
+                    const startTotal = startH * 60 + startM;
+                    let endTotal = endH * 60 + endM;
+                    if (endTotal < startTotal) {
+                        if (totalMinutes >= startTotal || totalMinutes < endTotal) return shift;
+                    } else {
+                        if (totalMinutes >= startTotal && totalMinutes < endTotal) return shift;
+                    }
+                }
+                return null;
+            };
+
+            const activeShiftNow = getActiveShift();
+            const latestSalary = getPayrolls().find(p => p.userId === user.id);
+
+            // Render Dashboard Content
+            const dashboardHTML = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isAdmin ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}">
+                            ${isAdmin ? 'Panel Admin' : 'Portal Karyawan'}
+                        </span>
+                        ${!isAdmin ? `
+                            <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                                <i data-lucide="history" width="10" height="10"></i> Masa Kerja: ${calculateTenure(user.joinDate)}
+                            </span>
+                        ` : ''}
+                    </div>
+                    <h2 class="text-2xl md:text-4xl font-black text-slate-900 tracking-tight uppercase">
+                        ${isAdmin ? 'Ringkasan Dashboard' : 'Halo, ' + user.name.split(' ')[0]}
+                    </h2>
+                    </div>
+                    
+                    <div class="bg-white border border-slate-200 px-6 py-4 rounded-[1.5rem] flex flex-col items-center justify-center shadow-sm">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">JAM SISTEM</p>
+                    <p id="clock" class="text-3xl font-mono font-black text-indigo-600">--:--:--</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div class="lg:col-span-8 space-y-8">
+                         <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                            <div class="flex items-center gap-5 flex-1 z-10">
+                            <div class="p-5 rounded-[1.5rem] ${activeShiftNow?.color || 'bg-slate-200'} text-white shadow-xl animate-pulse">
+                                <i data-lucide="activity" width="32" height="32"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Berjalan</p>
+                                <h3 class="text-2xl font-black text-slate-900 flex flex-col">
+                                    ${activeShiftNow?.name || 'Transition...'}
+                                    ${(() => {
+                    if (activeShiftNow && activeShiftNow.type !== 'REGULER' && activeShiftNow.type !== 'LIBUR') {
+                        let idx = 0;
+                        if (activeShiftNow.type === 'PAGI') idx = 0;
+                        else if (activeShiftNow.type === 'MALAM') idx = 1;
+                        else if (activeShiftNow.type === 'SORE') idx = 2;
+
+                        const grp = getShiftGroup(new Date(), idx);
+                        return `<span class="text-sm text-indigo-500 mt-1">
+                                                Grup Bertugas: <span class="bg-indigo-100 px-2 py-0.5 rounded text-indigo-700 font-bold">${grp}</span>
+                                            </span>`;
+                    }
+                    return '';
+                })()}
+                                </h3>
+                                <p class="text-slate-500 font-bold text-sm mt-1">Pukul: <span class="text-indigo-600">${activeShiftNow ? activeShiftNow.startTime + ' - ' + activeShiftNow.endTime : '--:--'}</span></p>
+                            </div>
+                            </div>
+                            <div class="h-16 w-[1px] bg-slate-100 hidden md:block"></div>
+                            <div class="flex items-center gap-5 flex-1 z-10">
+                            <div class="p-4 rounded-[1.5rem] bg-indigo-600 text-white shadow-lg">
+                                <i data-lucide="users" width="24" height="24"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Database</p>
+                                <h3 class="text-xl font-black text-slate-800">${isAdmin ? allUsers.length + ' Karyawan' : user.division}</h3>
+                                <p class="text-slate-500 text-sm font-medium">${isAdmin ? 'Aktif Seluruh Unit' : user.position}</p>
+                            </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                            ${isAdmin ? `
+                                ${renderStatCard('Hadir', todayStats.hadir, 'Hari Ini', 'user-check', 'indigo')}
+                                ${renderStatCard('Telat', todayStats.telat, 'Butuh Review', 'clock', 'amber')}
+                                ${renderStatCard('Approve Cuti', todayStats.reqCuti, 'Menunggu', 'calendar-off', 'rose')}
+                                ${renderStatCard('Approve Sakit', todayStats.reqSakit, 'Menunggu', 'stethoscope', 'blue')}
+                                ${renderStatCard('Approve Izin', todayStats.reqIzin, 'Menunggu', 'clipboard-list', 'purple')}
+                                ${renderStatCard('Approve Dinas', todayStats.reqDinas, 'Menunggu', 'briefcase', 'orange')}
+                                ${renderStatCard('Total', todayStats.total, 'SDM', 'users', 'emerald')}
+                            ` : `
+                                ${renderStatCard('Total Cuti', userStats.cuti, 'Hari', 'calendar-off', 'rose')}
+                                ${renderStatCard('Total Sakit', userStats.sakit, 'Hari', 'stethoscope', 'blue')}
+                                ${renderStatCard('Total Izin', userStats.izin, 'Hari', 'file-check', 'purple')}
+                                ${renderStatCard('Dinas Luar', userStats.dinas, 'Hari', 'briefcase', 'amber')}
+                                ${renderStatCard('Terlambat', userStats.telat, 'Kali', 'clock', 'orange')}
+                                ${renderStatCard('Hadir', userStats.hadir, 'Hari', 'user-check', 'emerald')}
+                                ${renderStatCard('Gaji', latestSalary ? 'Rp ' + (latestSalary.netSalary / 1000000).toFixed(1) + 'jt' : '-', 'Estimasi', 'wallet', 'indigo')}
+                            `}
+                        </div>
+
+                        <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
+                             <h3 class="font-black text-slate-800 text-xl tracking-tight uppercase mb-8">Statistik Kehadiran</h3>
+                             <div id="chart" class="w-full h-64 flex items-center justify-center text-slate-400 font-bold italic text-sm bg-slate-50 rounded-2xl">
+                                Belum ada data statistik tersedia.
+                             </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-4 space-y-8">
+                       <div class="bg-indigo-600 p-8 rounded-[3rem] text-white shadow-2xl shadow-indigo-100 flex flex-col justify-between group cursor-pointer hover:bg-indigo-700 transition-all h-fit">
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="space-y-1">
+                                    <p class="text-[10px] font-black text-indigo-200 uppercase tracking-widest">STATUS</p>
+                                    <h4 class="text-3xl font-black">Belum Absen</h4>
+                                </div>
+                                <div class="p-4 bg-white/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                    <i data-lucide="alert-circle" width="32" height="32"></i>
+                                </div>
+                            </div>
+                            <button class="w-full bg-white text-indigo-700 font-black py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all text-xs tracking-widest uppercase">
+                                ABSEN SEKARANG
+                            </button>
+                        </div>
+                        
+                        <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
+                           <div class="flex items-center gap-3 mb-6">
+                             <div class="bg-white/10 p-2.5 rounded-xl">
+                               <i data-lucide="sparkles" class="text-amber-400" width="20" height="20"></i>
+                             </div>
+                             <h3 class="font-black text-xl tracking-tight uppercase">AI Insights</h3>
+                           </div>
+                           <div class="bg-white/5 p-6 rounded-[2rem] border border-white/10">
+                             <p id="ai-insight" class="text-indigo-50 leading-relaxed font-bold italic text-sm">"Menunggu data presensi..."</p>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('dashboard-content').innerHTML = dashboardHTML;
+            lucide.createIcons();
+
+            // Clock Logic
+            setInterval(() => {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                document.getElementById('clock').textContent = timeString;
+            }, 1000);
+
+            // AI Insight Logic (Simplified for Clean State)
+            /*
+            setTimeout(() => {
+                const text = isAdmin
+                    ? `Sistem normal. ${todayStats.total} karyawan aktif hari ini.`
+                    : `Halo ${user.name}, selamat bekerja!`;
+                document.getElementById('ai-insight').textContent = `"${text}"`;
+            }, 1500);
+            */
+            // Placeholder chart logic removed (replaced with "No Data" div)
+        }
+
+        function renderStatCard(title, value, subtitle, icon, color) {
+            const colors = {
+                indigo: 'bg-indigo-50 text-indigo-600',
+                amber: 'bg-amber-50 text-amber-600',
+                blue: 'bg-blue-50 text-blue-600',
+                rose: 'bg-rose-50 text-rose-600',
+            };
+            return `
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                <div class="flex items-start justify-between">
+                    <div class="p-4 rounded-2xl ${colors[color]} group-hover:rotate-12 transition-transform">
+                       <i data-lucide="${icon}" width="22" height="22"></i>
+                    </div>
+                    <span class="text-slate-400 text-[9px] font-black bg-slate-50 px-2 py-1 rounded-full uppercase tracking-widest">${subtitle}</span>
+                </div>
+                <div class="mt-4">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${title}</p>
+                    <h4 class="text-2xl font-black text-slate-900 mt-1 tracking-tighter">${value}</h4>
+                </div>
+                </div>
+            `;
+        }
+
+    </script>
+</body>
+
+</html>
