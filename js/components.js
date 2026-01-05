@@ -15,6 +15,7 @@ export const renderSidebar = (user, activePath) => {
 
     if (isAdmin) {
         menuItems.push({ name: 'Karyawan', icon: 'users', path: 'employees.html' });
+        menuItems.push({ name: 'Pelanggaran', icon: 'alert-triangle', path: 'violations.html' });
         menuItems.push({ name: 'Pengaturan', icon: 'settings', path: 'settings.html' });
     }
 

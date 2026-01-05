@@ -76,32 +76,26 @@
             const allRequests = StorageManager.getRequests();
 
             // Calculate Today's Stats
-            // Calculate Today's Stats
             const today = new Date().toISOString().split('T')[0];
 
-            // Pending Requests for Admin
-            const pendingReqs = allRequests.filter(r => r.status === 'PENDING' || r.status === 'CANCEL_REQ');
+            // Filter for ACTIVE APPROVED requests for TODAY
+            const activeReqs = allRequests.filter(r => {
+                if (r.status !== 'APPROVED') return false;
+                const start = r.start || r.startDate;
+                const end = r.end || r.endDate;
+                return today >= start && today <= end;
+            });
 
             const todayStats = {
                 hadir: allAttendance.filter(a => a.date === today && a.status === 'PRESENT').length,
                 telat: allAttendance.filter(a => a.date === today && a.status === 'LATE').length,
-                // Breakdown for Admin
-                reqCuti: pendingReqs.filter(r => r.type.includes('CUTI')).length,
-                reqSakit: pendingReqs.filter(r => r.type.includes('SAKIT')).length,
-                reqIzin: pendingReqs.filter(r => r.type.includes('IZIN') || r.type.includes('PP') || r.type.includes('LEMBUR')).length,
-                reqDinas: pendingReqs.filter(r => r.type.includes('DINAS')).length,
+                // Breakdown for Admin (Active Today)
+                reqCuti: activeReqs.filter(r => r.type.includes('CUTI')).length,
+                reqSakit: activeReqs.filter(r => r.type.includes('SAKIT')).length,
+                reqIzin: activeReqs.filter(r => r.type.includes('IZIN') || r.type.includes('PP') || r.type.includes('LEMBUR')).length,
+                reqDinas: activeReqs.filter(r => r.type.includes('DINAS')).length,
                 total: allUsers.length
             };
-
-            // Helper to calculate days between dates (inclusive)
-            // ... (keep helper and userStats logic same, just skipping lines in replace block usually, but here I need to reach the render block)
-            // Actually, I can just replace the todayStats block and the render block separately, or do a larger replace. 
-            // Given previous tool behavior, safer to do the specific blocks.
-            // I will replace todayStats first, then the grid.
-            // Wait, I can do it in one go if I include the intermediate lines. 
-            // But the userStats logic follows immediately.
-            // I'll just replace the `todayStats` definition block first.
-
 
             // Helper to calculate days between dates (inclusive)
             const calculateDays = (start, end) => {
@@ -114,8 +108,6 @@
             const userAttendance = allAttendance.filter(a => a.userId === user.id);
             const userRequests = allRequests.filter(r => r.userId === user.id && r.status === 'APPROVED');
 
-            // Calculate totals from requests
-            // Calculate totals from requests
             // Calculate totals from requests
             // Calculate totals from requests
             const totalCutiRequests = userRequests
@@ -140,7 +132,7 @@
                 // Combine stats from Attendance log (historical) AND Requests (official record)
                 cuti: totalCutiRequests || userAttendance.filter(a => a.status === 'LEAVE').length,
                 sakit: totalSakitRequests || userAttendance.filter(a => a.status === 'SICK').length,
-                izin: totalIzinRequests || userAttendance.filter(a => a.status === 'PERMISSION').length, // Assuming PERMISSION status exists or fallback to 0
+                izin: totalIzinRequests || userAttendance.filter(a => a.status === 'PERMISSION').length,
                 dinas: totalDinasRequests || userAttendance.filter(a => a.status === 'BUSINESS_TRIP').length,
             };
 
@@ -174,7 +166,7 @@
                         <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${isAdmin ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}">
                             ${isAdmin ? 'Panel Admin' : 'Portal Karyawan'}
                         </span>
-                        ${!isAdmin ? `
+                         ${!isAdmin ? `
                             <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
                                 <i data-lucide="history" width="10" height="10"></i> Masa Kerja: ${calculateTenure(user.joinDate)}
                             </span>
@@ -237,11 +229,11 @@
                         <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                             ${isAdmin ? `
                                 ${renderStatCard('Hadir', todayStats.hadir, 'Hari Ini', 'user-check', 'indigo')}
-                                ${renderStatCard('Telat', todayStats.telat, 'Butuh Review', 'clock', 'amber')}
-                                ${renderStatCard('Approve Cuti', todayStats.reqCuti, 'Menunggu', 'calendar-off', 'rose')}
-                                ${renderStatCard('Approve Sakit', todayStats.reqSakit, 'Menunggu', 'stethoscope', 'blue')}
-                                ${renderStatCard('Approve Izin', todayStats.reqIzin, 'Menunggu', 'clipboard-list', 'purple')}
-                                ${renderStatCard('Approve Dinas', todayStats.reqDinas, 'Menunggu', 'briefcase', 'orange')}
+                                ${renderStatCard('Telat', todayStats.telat, 'Hari Ini', 'clock', 'amber')}
+                                ${renderStatCard('Sedang Cuti', todayStats.reqCuti, 'Hari Ini', 'calendar-off', 'rose')}
+                                ${renderStatCard('Sedang Sakit', todayStats.reqSakit, 'Hari Ini', 'stethoscope', 'blue')}
+                                ${renderStatCard('Sedang Izin', todayStats.reqIzin, 'Hari Ini', 'clipboard-list', 'purple')}
+                                ${renderStatCard('Dinas Luar', todayStats.reqDinas, 'Hari Ini', 'briefcase', 'orange')}
                                 ${renderStatCard('Total', todayStats.total, 'SDM', 'users', 'emerald')}
                             ` : `
                                 ${renderStatCard('Total Cuti', userStats.cuti, 'Hari', 'calendar-off', 'rose')}
