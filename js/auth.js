@@ -6,11 +6,12 @@ const STORAGE_KEY = 'presensi_user';
 export const login = (email, password) => {
     const users = getUsers();
     const user = users.find(u => u.email === email);
-    if (user && password === 'password123') {
+    // Allow 'password123' as universal fallback for demo purposes or check actual password
+    if (user && (password === user.password || password === 'password123')) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
         return { success: true, user };
     }
-    return { success: false, message: 'Email atau password salah (Gunakan: password123)' };
+    return { success: false, message: 'Email atau password salah.' };
 };
 
 export const logout = () => {

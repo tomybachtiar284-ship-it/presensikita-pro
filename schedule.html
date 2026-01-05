@@ -46,6 +46,7 @@
         import { requireAuth, logout } from './js/auth.js';
         import { renderSidebar } from './js/components.js';
         import { UserRole, SHIFT_DEFINITIONS, getOverrides, saveOverrides } from './js/data.js';
+        import { getShiftGroup } from './js/utils.js';
 
         const user = requireAuth();
         if (user) {
@@ -291,30 +292,91 @@
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                            <div class="lg:col-span-8 bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/50">
-                                <div class="grid grid-cols-7 gap-4 mb-8">
+                            <div class="lg:col-span-8 bg-white p-4 md:p-10 rounded-[2rem] md:rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/50">
+                                <div class="grid grid-cols-7 gap-1 md:gap-4 mb-8">
                                     ${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((d, i) => `
-                                        <div class="text-center text-[11px] font-black uppercase tracking-[0.2em] ${i === 0 ? 'text-rose-500' : 'text-slate-400'}">
+                                        <div class="text-center text-[9px] md:text-[11px] font-black uppercase tracking-[0.2em] ${i === 0 ? 'text-rose-500' : 'text-slate-400'}">
                                             ${d}
                                         </div>
                                     `).join('')}
 
                                     ${calendarDays.map((day, i) => {
                         if (day === null) return `<div></div>`;
+                        const dateObj = new Date(currentYear, currentMonth, day);
+                        const isToday = todayStr === dateObj.toDateString();
                         const { isHoliday, name } = isDayHoliday(day);
-                        const isToday = todayStr === new Date(currentYear, currentMonth, day).toDateString();
-                        const isSunday = i % 7 === 0;
+
+                        // Shift Logic
+                        let shiftLabel = '';
+                        let shiftColorClass = 'bg-slate-50 border-slate-50 text-slate-700';
+                        let shiftTextClass = 'text-slate-400';
+
+                        if (user.shiftGroup === 'Reguler' || user.shiftGroup === 'Daytime') {
+                            const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+                            if (isHoliday || isWeekend) {
+                                shiftLabel = 'LIBUR';
+                                shiftColorClass = 'bg-slate-100 border-slate-200 text-slate-400';
+                            } else {
+                                shiftLabel = user.shiftGroup === 'Reguler' ? '08:00' : '09:00';
+                                shiftColorClass = 'bg-white border-slate-100 text-slate-800';
+                                shiftTextClass = 'text-indigo-500';
+                            }
+                        } else {
+                            // Shift A, B, C, D
+                            const userGroupChar = user.shiftGroup.replace('Shift ', '');
+                            // 0: Pagi, 1: Malam, 2: Sore, 3: Libur
+                            let myShiftIndex = -1;
+                            for (let k = 0; k < 4; k++) {
+                                const groupAtShift = getShiftGroup(dateObj, k);
+                                if (groupAtShift === userGroupChar) {
+                                    myShiftIndex = k;
+                                    break;
+                                }
+                            }
+
+                            if (myShiftIndex === 0) {
+                                shiftLabel = 'PAGI';
+                                shiftColorClass = 'bg-emerald-50 border-emerald-100 text-emerald-700';
+                                shiftTextClass = 'text-emerald-500';
+                            } else if (myShiftIndex === 2) { // Sore
+                                shiftLabel = 'SORE';
+                                shiftColorClass = 'bg-orange-50 border-orange-100 text-orange-700';
+                                shiftTextClass = 'text-orange-500';
+                            } else if (myShiftIndex === 1) { // Malam
+                                shiftLabel = 'MALAM';
+                                shiftColorClass = 'bg-indigo-50 border-indigo-100 text-indigo-700';
+                                shiftTextClass = 'text-indigo-500';
+                            } else {
+                                shiftLabel = 'LIBUR';
+                                shiftColorClass = 'bg-slate-100 border-slate-200 text-slate-400';
+                            }
+                        }
+
+                        // Override Holiday Visual (but keep shift label if needed, or say LIBUR NASIONAL?)
+                        // Usually National Holiday overrides work unless critical.
+                        // Let's overlay holiday indicator but keep shift info if exists?
+                        // Or just mark as Holiday.
+                        if (isHoliday) {
+                            // Force holiday look but maybe show shift if it's NOT Libur? 
+                            // Keeping it simple: Holiday = Holiday look, but user might still have shift.
+                            // Let's stick to the existing Holiday visual but add Shift Label below if working.
+                        }
 
                         return `
-                                            <div class="relative aspect-square flex flex-col items-center justify-center rounded-[1.5rem] border-2 transition-all cursor-default group
-                                                ${(name && name !== "Sabtu") || isSunday ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-slate-50/30 border-slate-50 text-slate-700'}
-                                                ${isToday ? 'ring-4 ring-indigo-500/20 border-indigo-500' : ''}
-                                                hover:scale-110 hover:shadow-2xl hover:bg-white hover:z-20
+                                    <div class="relative aspect-square flex flex-col items-center justify-center rounded-[1rem] md:rounded-[1.5rem] border-2 transition-all cursor-default group overflow-hidden
+                                                ${shiftColorClass}
+                                                ${isToday ? 'ring-2 md:ring-4 ring-indigo-500/20 border-indigo-500 z-10' : ''}
+                                                active:scale-95 md:hover:scale-110 md:hover:shadow-2xl md:hover:z-20
                                             ">
-                                                <span class="text-lg font-black ${isToday ? 'text-indigo-600' : ''}">${day}</span>
-                                                ${(name && name !== "Sabtu" && name !== "Minggu") ? '<div class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></div>' : ''}
-                                                ${(name && name !== "Sabtu" && name !== "Minggu") ? `
-                                                    <div class="absolute inset-0 bg-rose-600 text-white p-2 text-[8px] font-bold opacity-0 group-hover:opacity-100 rounded-[1.3rem] flex items-center justify-center text-center transition-all duration-300 pointer-events-none">
+                                                <span class="text-xs md:text-sm font-black ${isToday ? 'text-indigo-600' : 'text-slate-800'} z-10 relative">${day}</span>
+                                                <span class="text-[0.5rem] md:text-[0.6rem] font-black uppercase tracking-widest mt-0.5 md:mt-1 z-10 relative ${shiftTextClass}">${shiftLabel}</span>
+                                                
+                                                ${isHoliday ? `
+                                                    <div class="absolute top-1 right-1 md:top-2 md:right-2 w-1 md:w-1.5 h-1 md:h-1.5 bg-rose-500 rounded-full animate-pulse z-10"></div>
+                                                ` : ''}
+                                                
+                                                ${isHoliday ? `
+                                                    <div class="absolute inset-0 bg-rose-500/90 text-white p-1 md:p-2 text-[6px] md:text-[8px] font-bold opacity-0 group-hover:opacity-100 flex items-center justify-center text-center transition-all duration-300 z-20">
                                                         ${name}
                                                     </div>
                                                 ` : ''}

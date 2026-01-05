@@ -173,26 +173,97 @@
                         ` : ''}
                     </div>
                     <h2 class="text-2xl md:text-4xl font-black text-slate-900 tracking-tight uppercase">
-                        ${isAdmin ? 'Ringkasan Dashboard' : 'Halo, ' + user.name.split(' ')[0]}
+                        ${(() => {
+                    if (isAdmin) return 'Ringkasan Dashboard';
+
+                    // Greeting Logic
+                    const name = user.name.split(' ')[0];
+                    const today = new Date();
+
+                    // Special Case for Reguler/Daytime
+                    if (user.shiftGroup === 'Reguler' || user.shiftGroup === 'Daytime') {
+                        const day = today.getDay();
+                        const isWeekend = day === 0 || day === 6;
+                        if (isWeekend) return `Halo ${name}, hari ini kamu libur selamat istrahat.`;
+                        return `Halo ${name}, selamat bekerja!`;
+                    }
+
+                    // For Shift Groups (A, B, C, D)
+                    // We need to match which shift index (0=Pagi, 1=Malam, 2=Sore, 3=Libur) corresponds to user's group today
+                    const userGroupChar = user.shiftGroup.replace('Shift ', ''); // 'Shift A' -> 'A'
+                    let myShiftIndex = -1;
+
+                    // Iterate 0..3 (Pagi, Malam, Sore, Libur)
+                    for (let i = 0; i < 4; i++) {
+                        const groupAtShift = getShiftGroup(today, i);
+                        if (groupAtShift === userGroupChar) {
+                            myShiftIndex = i;
+                            break;
+                        }
+                    }
+
+                    // 0: Pagi, 1: Malam, 2: Sore, 3: Libur
+                    switch (myShiftIndex) {
+                        case 3: // Libur
+                            return `Halo ${name}, hari ini kamu libur selamat istrahat.`;
+                        case 2: // Sore
+                            return `Halo ${name}, hari ini kamu masuk sore persiapkan sebelum kerja.`;
+                        case 1: // Malam
+                            return `Halo ${name}, hari ini kamu masuk malam semangat ya.`;
+                        case 0: // Pagi
+                            return `Halo ${name}, hari ini kamu masuk pagi selamat beraktivitas.`;
+                        default:
+                            return `Halo ${name}, cek jadwal kerjamu hari ini.`;
+                    }
+                })()}
                     </h2>
                     </div>
                     
-                    <div class="bg-white border border-slate-200 px-6 py-4 rounded-[1.5rem] flex flex-col items-center justify-center shadow-sm">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">JAM SISTEM</p>
-                    <p id="clock" class="text-3xl font-mono font-black text-indigo-600">--:--:--</p>
+                </div>
+                    
+                    <div class="flex items-center gap-4">
+                        <div class="relative">
+                            <button id="notif-btn" class="p-4 bg-white border border-slate-200 rounded-[1.5rem] shadow-sm hover:bg-slate-50 transition-colors relative">
+                                <i data-lucide="bell" width="24" height="24" class="text-slate-600"></i>
+                                <span id="notif-badge" class="hidden absolute top-3 right-3 w-3 h-3 bg-rose-500 border-2 border-white rounded-full"></span>
+                            </button>
+                        </div>
+                        <div class="hidden md:flex bg-white border border-slate-200 px-6 py-4 rounded-[1.5rem] flex-col items-center justify-center shadow-sm">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">JAM SISTEM</p>
+                            <p id="clock" class="text-3xl font-mono font-black text-indigo-600">--:--:--</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div class="lg:col-span-8 space-y-8">
-                         <div class="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
-                            <div class="flex items-center gap-5 flex-1 z-10">
-                            <div class="p-5 rounded-[1.5rem] ${activeShiftNow?.color || 'bg-slate-200'} text-white shadow-xl animate-pulse">
-                                <i data-lucide="activity" width="32" height="32"></i>
+                <!-- Notifications Modal (Hidden by default) -->
+                <div id="notif-modal" class="hidden fixed inset-0 z-[60] flex items-start justify-end p-4 md:p-8 pointer-events-none">
+                    <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden pointer-events-auto animate-in slide-in-from-right duration-300 mt-16 md:mt-20 max-h-[80vh] flex flex-col">
+                        <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                            <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Notifikasi</h3>
+                            <div class="flex gap-2">
+                                <button onclick="window.triggerTestNotif()" class="p-2 text-indigo-400 hover:text-indigo-600 transition-colors" title="Test Notif"><i data-lucide="plus-circle" width="16" height="16"></i></button>
+                                <button onclick="toggleNotifModal()" class="p-2 text-slate-400 hover:text-slate-600 transition-colors"><i data-lucide="x" width="20" height="20"></i></button>
                             </div>
-                            <div>
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Berjalan</p>
-                                <h3 class="text-2xl font-black text-slate-900 flex flex-col">
+                        </div>
+                        <div id="notif-list" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                            <!-- Injected JS -->
+                        </div>
+                        <div class="p-4 border-t border-slate-50 bg-slate-50/30 text-center">
+                             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sistem Notifikasi PresensiKita</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                    <div class="lg:col-span-8 space-y-6 lg:space-y-8">
+                         <div class="bg-white p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 relative overflow-hidden">
+                            <div class="flex items-center gap-4 md:gap-5 flex-1 z-10 w-full">
+                            <div class="p-4 md:p-5 rounded-[1.2rem] md:rounded-[1.5rem] ${activeShiftNow?.color || 'bg-slate-200'} text-white shadow-xl animate-pulse shrink-0">
+                                <i data-lucide="activity" width="24" height="24" class="md:w-8 md:h-8"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Berjalan</p>
+                                <h3 class="text-lg md:text-2xl font-black text-slate-900 flex flex-col leading-tight">
                                     ${activeShiftNow?.name || 'Transition...'}
                                     ${(() => {
                     if (activeShiftNow && activeShiftNow.type !== 'REGULER' && activeShiftNow.type !== 'LIBUR') {
@@ -202,31 +273,31 @@
                         else if (activeShiftNow.type === 'SORE') idx = 2;
 
                         const grp = getShiftGroup(new Date(), idx);
-                        return `<span class="text-sm text-indigo-500 mt-1">
-                                                Grup Bertugas: <span class="bg-indigo-100 px-2 py-0.5 rounded text-indigo-700 font-bold">${grp}</span>
+                        return `<span class="text-xs md:text-sm text-indigo-500 mt-1">
+                                                Grup: <span class="bg-indigo-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">${grp}</span>
                                             </span>`;
                     }
                     return '';
                 })()}
                                 </h3>
-                                <p class="text-slate-500 font-bold text-sm mt-1">Pukul: <span class="text-indigo-600">${activeShiftNow ? activeShiftNow.startTime + ' - ' + activeShiftNow.endTime : '--:--'}</span></p>
+                                <p class="text-slate-500 font-bold text-xs md:text-sm mt-1">Pukul: <span class="text-indigo-600">${activeShiftNow ? activeShiftNow.startTime + ' - ' + activeShiftNow.endTime : '--:--'}</span></p>
                             </div>
                             </div>
-                            <div class="h-16 w-[1px] bg-slate-100 hidden md:block"></div>
-                            <div class="flex items-center gap-5 flex-1 z-10">
-                            <div class="p-4 rounded-[1.5rem] bg-indigo-600 text-white shadow-lg">
-                                <i data-lucide="users" width="24" height="24"></i>
+                            <div class="h-px w-full md:h-16 md:w-[1px] bg-slate-100 block"></div>
+                            <div class="flex items-center gap-4 md:gap-5 flex-1 z-10 w-full">
+                            <div class="p-3 md:p-4 rounded-[1.2rem] md:rounded-[1.5rem] bg-indigo-600 text-white shadow-lg shrink-0">
+                                <i data-lucide="users" width="20" height="20" class="md:w-6 md:h-6"></i>
                             </div>
                             <div>
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Database</p>
-                                <h3 class="text-xl font-black text-slate-800">${isAdmin ? allUsers.length + ' Karyawan' : user.division}</h3>
-                                <p class="text-slate-500 text-sm font-medium">${isAdmin ? 'Aktif Seluruh Unit' : user.position}</p>
+                                <p class="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Database</p>
+                                <h3 class="text-lg md:text-xl font-black text-slate-800 leading-tight">${isAdmin ? allUsers.length + ' Karyawan' : user.division}</h3>
+                                <p class="text-slate-500 text-xs md:text-sm font-medium line-clamp-1">${isAdmin ? 'Aktif Seluruh Unit' : user.position}</p>
                             </div>
                             </div>
                         </div>
 
                         <!-- Stats Grid -->
-                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
                             ${isAdmin ? `
                                 ${renderStatCard('Hadir', todayStats.hadir, 'Hari Ini', 'user-check', 'indigo')}
                                 ${renderStatCard('Telat', todayStats.telat, 'Hari Ini', 'clock', 'amber')}
@@ -246,9 +317,9 @@
                             `}
                         </div>
 
-                        <div class="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
-                             <h3 class="font-black text-slate-800 text-xl tracking-tight uppercase mb-8">Statistik Kehadiran</h3>
-                             <div id="chart" class="w-full h-64 flex items-center justify-center text-slate-400 font-bold italic text-sm bg-slate-50 rounded-2xl">
+                        <div class="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] shadow-sm border border-slate-100">
+                             <h3 class="font-black text-slate-800 text-lg md:text-xl tracking-tight uppercase mb-6 md:mb-8">Statistik Kehadiran</h3>
+                             <div id="chart" class="w-full h-48 md:h-64 flex items-center justify-center text-slate-400 font-bold italic text-xs md:text-sm bg-slate-50 rounded-2xl">
                                 Belum ada data statistik tersedia.
                              </div>
                         </div>
@@ -295,15 +366,79 @@
                 document.getElementById('clock').textContent = timeString;
             }, 1000);
 
-            // AI Insight Logic (Simplified for Clean State)
-            /*
-            setTimeout(() => {
-                const text = isAdmin
-                    ? `Sistem normal. ${todayStats.total} karyawan aktif hari ini.`
-                    : `Halo ${user.name}, selamat bekerja!`;
-                document.getElementById('ai-insight').textContent = `"${text}"`;
-            }, 1500);
-            */
+            // Notification Logic
+            const notifBtn = document.getElementById('notif-btn');
+            const notifModal = document.getElementById('notif-modal');
+            const notifBadge = document.getElementById('notif-badge');
+            const notifList = document.getElementById('notif-list');
+
+            const renderNotifications = () => {
+                const list = StorageManager.getNotifications().filter(n => n.userId === user.id || n.userId === 'ALL').reverse();
+                const unreadCount = list.filter(n => !n.isRead).length;
+
+                // Update Badge
+                if (unreadCount > 0) {
+                    notifBadge.classList.remove('hidden');
+                    notifBadge.classList.add('animate-pulse');
+                } else {
+                    notifBadge.classList.add('hidden');
+                    notifBadge.classList.remove('animate-pulse');
+                }
+
+                if (list.length === 0) {
+                    notifList.innerHTML = `
+                        <div class="text-center py-10">
+                            <div class="inline-flex p-4 bg-slate-50 rounded-2xl mb-3 text-slate-300">
+                                <i data-lucide="bell-off" width="24" height="24"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-400">Belum ada notifikasi baru.</p>
+                        </div>
+                    `;
+                } else {
+                    notifList.innerHTML = list.map(n => `
+                        <div onclick="window.markRead('${n.id}')" class="p-4 rounded-3xl border border-slate-100 cursor-pointer transition-all hover:bg-slate-50 ${n.isRead ? 'bg-white opacity-60' : 'bg-indigo-50/50 border-indigo-100'}">
+                            <div class="flex gap-3 items-start">
+                                <div class="mt-1 min-w-[24px]">
+                                     ${n.type === 'SUCCESS' ? '<div class="w-2 h-2 rounded-full bg-emerald-500"></div>' :
+                            n.type === 'WARNING' ? '<div class="w-2 h-2 rounded-full bg-amber-500"></div>' :
+                                n.type === 'ERROR' ? '<div class="w-2 h-2 rounded-full bg-rose-500"></div>' :
+                                    '<div class="w-2 h-2 rounded-full bg-indigo-500"></div>'}
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="text-xs font-black text-slate-800 uppercase tracking-tight mb-0.5 ${!n.isRead ? 'text-indigo-900' : ''}">${n.title}</h4>
+                                    <p class="text-xs font-medium text-slate-500 leading-relaxed">${n.message}</p>
+                                    <p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-2">${new Date(n.createdAt).toLocaleDateString('id-ID')} • ${new Date(n.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            };
+
+            window.toggleNotifModal = () => {
+                notifModal.classList.toggle('hidden');
+                if (!notifModal.classList.contains('hidden')) {
+                    renderNotifications();
+                }
+            };
+
+            window.markRead = (id) => {
+                StorageManager.markReadNotification(id);
+                renderNotifications();
+            };
+
+            window.triggerTestNotif = () => {
+                StorageManager.addNotification(user.id, 'Uji Coba Sistem', 'Ini adalah contoh notifikasi sistem untuk ' + user.name, 'INFO');
+                renderNotifications();
+            };
+
+            notifBtn.onclick = toggleNotifModal;
+
+            // Initial Check
+            renderNotifications();
+            // Polling for new notifications (every 30s)
+            setInterval(renderNotifications, 30000);
             // Placeholder chart logic removed (replaced with "No Data" div)
         }
 

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PresensiKita Pro - Profil Saya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+    <div id="app-container" class="flex min-h-screen bg-slate-50">
+        <div id="sidebar-container"></div>
+
+        <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
+            <div id="content-container" class="space-y-8 mt-16 lg:mt-0 pb-12">
+
+                <!-- Header -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-3xl font-black text-slate-900 tracking-tight">Profil Saya</h2>
+                        <p class="text-slate-500 font-medium">Kelola informasi akun dan keamanan.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left: Profile Card -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <div
+                            class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl text-center relative overflow-hidden group">
+                            <div class="absolute top-0 left-0 right-0 h-32 bg-indigo-600"></div>
+                            <div class="relative z-10 mt-12">
+                                <div class="relative inline-block">
+                                    <img id="profile-avatar" src="" alt="Avatar"
+                                        class="w-32 h-32 rounded-full border-4 border-white shadow-2xl object-cover bg-slate-200">
+                                    <button
+                                        class="absolute bottom-0 right-0 p-3 bg-white text-indigo-600 rounded-full shadow-lg border border-slate-100 hover:bg-slate-50 transition-colors"
+                                        title="Ubah Foto" onclick="document.getElementById('avatar-input').click()">
+                                        <i data-lucide="camera" width="20" height="20"></i>
+                                    </button>
+                                    <input type="file" id="avatar-input" class="hidden" accept="image/*">
+                                </div>
+                                <h3 id="profile-name" class="text-2xl font-black text-slate-900 mt-6 tracking-tight">--
+                                </h3>
+                                <p id="profile-role"
+                                    class="text-sm font-bold text-indigo-500 uppercase tracking-widest mt-1">--</p>
+
+                                <div class="mt-8 grid grid-cols-2 gap-4 text-left">
+                                    <div class="bg-slate-50 p-4 rounded-2xl">
+                                        <p class="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">
+                                            NIK</p>
+                                        <p id="profile-nid" class="font-bold text-slate-700">--</p>
+                                    </div>
+                                    <div class="bg-slate-50 p-4 rounded-2xl">
+                                        <p class="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">
+                                            Divisi</p>
+                                        <p id="profile-division" class="font-bold text-slate-700">--</p>
+                                    </div>
+                                    <div class="bg-slate-50 p-4 rounded-2xl col-span-2">
+                                        <p class="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">
+                                            Bergabung Sejak</p>
+                                        <p id="profile-join" class="font-bold text-slate-700">--</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Edit Form -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                            <form id="profile-form" class="space-y-8">
+                                <!-- Contact Info -->
+                                <div>
+                                    <h4
+                                        class="flex items-center gap-3 text-lg font-black text-slate-800 uppercase tracking-tight mb-6">
+                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><i data-lucide="user"
+                                                width="20" height="20"></i></div>
+                                        Informasi Kontak
+                                    </h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="space-y-2">
+                                            <label
+                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
+                                            <input type="email" id="edit-email" required
+                                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-100 outline-none font-bold text-slate-700">
+                                        </div>
+                                        <div class="space-y-2">
+                                            <label
+                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nomor
+                                                Telepon</label>
+                                            <input type="tel" id="edit-phone" placeholder="08..."
+                                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-100 outline-none font-bold text-slate-700">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="border-slate-100">
+
+                                <!-- Security -->
+                                <div>
+                                    <h4
+                                        class="flex items-center gap-3 text-lg font-black text-slate-800 uppercase tracking-tight mb-6">
+                                        <div class="p-2 bg-rose-100 text-rose-600 rounded-lg"><i data-lucide="lock"
+                                                width="20" height="20"></i></div>
+                                        Keamanan (Ganti Password)
+                                    </h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="space-y-2">
+                                            <label
+                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password
+                                                Baru</label>
+                                            <input type="password" id="new-password"
+                                                placeholder="Kosongkan jika tidak ubah"
+                                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-100 outline-none font-bold text-slate-700 placeholder:font-normal">
+                                        </div>
+                                        <div class="space-y-2">
+                                            <label
+                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Konfirmasi
+                                                Password</label>
+                                            <input type="password" id="confirm-password"
+                                                placeholder="Ulangi password baru"
+                                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-100 outline-none font-bold text-slate-700 placeholder:font-normal">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pt-4 flex justify-end">
+                                    <button type="submit"
+                                        class="px-8 py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 active:scale-95 transition-all text-xs tracking-widest uppercase flex items-center gap-2">
+                                        <i data-lucide="save" width="18" height="18"></i> Simpan Perubahan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { requireAuth, logout } from './js/auth.js';
+        import { renderSidebar } from './js/components.js';
+        import { StorageManager } from './js/data.js';
+
+        const currentUser = requireAuth();
+        if (currentUser) {
+            document.getElementById('sidebar-container').innerHTML = renderSidebar(currentUser, window.location.pathname);
+
+            // Elements
+            const avatarImg = document.getElementById('profile-avatar');
+            const nameText = document.getElementById('profile-name');
+            const roleText = document.getElementById('profile-role');
+            const nidText = document.getElementById('profile-nid');
+            const divText = document.getElementById('profile-division');
+            const joinText = document.getElementById('profile-join');
+            const avatarInput = document.getElementById('avatar-input');
+
+            const emailInput = document.getElementById('edit-email');
+            const phoneInput = document.getElementById('edit-phone');
+            const newPassInput = document.getElementById('new-password');
+            const confirmPassInput = document.getElementById('confirm-password');
+
+            // Populate Data
+            const refreshUI = (u) => {
+                avatarImg.src = u.avatar;
+                nameText.textContent = u.name;
+                roleText.textContent = u.position || u.role;
+                nidText.textContent = u.nid;
+                divText.textContent = u.division;
+                joinText.textContent = new Date(u.joinDate).toLocaleDateString('id-ID', { dateStyle: 'long' });
+
+                emailInput.value = u.email;
+                phoneInput.value = u.phone || ''; // Assuming phone field exists or adding it
+            };
+
+            refreshUI(currentUser);
+
+            // Handle Avatar Change (Simulation)
+            avatarInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        avatarImg.src = e.target.result;
+                        // Actually saving this base64 string might be too heavy for localStorage in a real app,
+                        // but for demo it's fine or we verify the concept.
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Handle Form Submit
+            document.getElementById('profile-form').onsubmit = (e) => {
+                e.preventDefault();
+
+                const newEmail = emailInput.value;
+                const newPhone = phoneInput.value;
+                const newPass = newPassInput.value;
+                const confirmPass = confirmPassInput.value;
+
+                if (newPass && newPass !== confirmPass) {
+                    alert('Konfirmasi password tidak cocok!');
+                    return;
+                }
+
+                // Update User Object
+                const updatedUser = { ...currentUser };
+                updatedUser.email = newEmail;
+                updatedUser.phone = newPhone; // New field
+                if (avatarImg.src.startsWith('data:')) {
+                    updatedUser.avatar = avatarImg.src;
+                }
+
+                // Password Update (Simulation)
+                if (newPass) {
+                    // deepcode ignore: NoHardcodedCredentials
+                    updatedUser.password = newPass; // Note: In real app, never store plain text
+                }
+
+                // Save
+                StorageManager.upsertUser(updatedUser);
+
+                // Update Session
+                localStorage.setItem('PK_USER', JSON.stringify(updatedUser));
+
+                alert('Profil berhasil diperbaharui!');
+                location.reload();
+            };
+
+            // Mobile Menu & Logout Standard Logic
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+            const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            if (mobileMenuBtn) mobileMenuBtn.onclick = () => mobileOverlay.classList.remove('hidden');
+            if (closeMobileSidebar) closeMobileSidebar.onclick = () => mobileOverlay.classList.add('hidden');
+            if (logoutBtn) logoutBtn.onclick = logout;
+
+            lucide.createIcons();
+        }
+    </script>
+</body>
+
+</html>

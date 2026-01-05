@@ -65,6 +65,7 @@ const STORAGE_KEYS = {
   REQUESTS: 'PK_REQUESTS', // For Izin/Cuti
   SCHEDULE_OVERRIDES: 'SCHEDULE_OVERRIDES',
   VIOLATIONS: 'PK_VIOLATIONS',
+  NOTIFICATIONS: 'PK_NOTIFICATIONS',
   SETTINGS: 'PK_SETTINGS'
 };
 
@@ -114,6 +115,9 @@ const initStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.VIOLATIONS)) {
     localStorage.setItem(STORAGE_KEYS.VIOLATIONS, JSON.stringify([]));
   }
+  if (!localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS)) {
+    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
+  }
 };
 
 initStorage();
@@ -137,6 +141,33 @@ export const saveOverrides = (overrides) => localStorage.setItem(STORAGE_KEYS.SC
 export const getViolations = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.VIOLATIONS) || '[]');
 export const saveViolations = (data) => localStorage.setItem(STORAGE_KEYS.VIOLATIONS, JSON.stringify(data));
 
+export const getNotifications = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS) || '[]');
+export const saveNotifications = (data) => localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(data));
+
+// Helper: Add Notification
+export const addNotification = (userId, title, message, type = 'INFO') => {
+  const list = getNotifications();
+  list.push({
+    id: 'NOTIF-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+    userId,
+    title,
+    message,
+    type,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  });
+  saveNotifications(list);
+};
+
+export const markReadNotification = (id) => {
+  const list = getNotifications();
+  const idx = list.findIndex(n => n.id === id);
+  if (idx !== -1) {
+    list[idx].isRead = true;
+    saveNotifications(list);
+  }
+};
+
 // Helper Class to Group Operations
 export class StorageManager {
   static getUsers() { return getUsers(); }
@@ -153,6 +184,11 @@ export class StorageManager {
 
   static getViolations() { return getViolations(); }
   static saveViolations(data) { saveViolations(data); return data; }
+
+  static getNotifications() { return getNotifications(); }
+  static saveNotifications(data) { saveNotifications(data); return data; }
+  static addNotification(userId, title, message, type) { addNotification(userId, title, message, type); }
+  static markReadNotification(id) { markReadNotification(id); }
 
   static upsertUser(user) {
     const users = getUsers();
