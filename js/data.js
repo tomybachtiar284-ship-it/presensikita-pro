@@ -64,6 +64,7 @@ const STORAGE_KEYS = {
   ATTENDANCE: 'PK_ATTENDANCE',
   REQUESTS: 'PK_REQUESTS', // For Izin/Cuti
   SCHEDULE_OVERRIDES: 'SCHEDULE_OVERRIDES',
+  VIOLATIONS: 'PK_VIOLATIONS',
   SETTINGS: 'PK_SETTINGS'
 };
 
@@ -110,6 +111,9 @@ const initStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.SCHEDULE_OVERRIDES)) {
     localStorage.setItem(STORAGE_KEYS.SCHEDULE_OVERRIDES, JSON.stringify({}));
   }
+  if (!localStorage.getItem(STORAGE_KEYS.VIOLATIONS)) {
+    localStorage.setItem(STORAGE_KEYS.VIOLATIONS, JSON.stringify([]));
+  }
 };
 
 initStorage();
@@ -130,6 +134,9 @@ export const saveRequests = (data) => localStorage.setItem(STORAGE_KEYS.REQUESTS
 export const getOverrides = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHEDULE_OVERRIDES) || '{}');
 export const saveOverrides = (overrides) => localStorage.setItem(STORAGE_KEYS.SCHEDULE_OVERRIDES, JSON.stringify(overrides));
 
+export const getViolations = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.VIOLATIONS) || '[]');
+export const saveViolations = (data) => localStorage.setItem(STORAGE_KEYS.VIOLATIONS, JSON.stringify(data));
+
 // Helper Class to Group Operations
 export class StorageManager {
   static getUsers() { return getUsers(); }
@@ -143,6 +150,9 @@ export class StorageManager {
 
   static getRequests() { return getRequests(); }
   static saveRequests(data) { saveRequests(data); return data; }
+
+  static getViolations() { return getViolations(); }
+  static saveViolations(data) { saveViolations(data); return data; }
 
   static upsertUser(user) {
     const users = getUsers();

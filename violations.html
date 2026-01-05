@@ -12,6 +12,24 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+
+        /* Custom Scrollbar for Modal */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
     </style>
 </head>
 
@@ -22,59 +40,384 @@
         <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
             <div id="content-container" class="space-y-8 mt-16 lg:mt-0 pb-12">
 
+                <!-- Header -->
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 class="text-3xl font-black text-slate-900 tracking-tight">Pelanggaran</h2>
                         <p class="text-slate-500 font-medium">Monitoring dan manajemen pelanggaran karyawan.</p>
                     </div>
-                </div>
-
-                <!-- Placeholder Content -->
-                <div
-                    class="flex flex-col items-center justify-center min-h-[50vh] bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-100/50 p-10 text-center space-y-6">
-                    <div class="p-6 bg-amber-50 text-amber-500 rounded-full animate-pulse">
-                        <i data-lucide="cone" width="64" height="64"></i>
-                    </div>
-                    <div class="space-y-2 max-w-lg">
-                        <h3 class="text-2xl font-black text-slate-900 tracking-tight">Segera Hadir</h3>
-                        <p class="text-slate-500 font-medium leading-relaxed">
-                            Fitur Pelanggaran sedang dalam tahap pengembangan. Anda akan segera dapat mengelola data
-                            pelanggaran dan sanksi karyawan di sini.
-                        </p>
-                    </div>
-                    <button onclick="window.history.back()"
-                        class="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2">
-                        <i data-lucide="arrow-left" width="20" height="20"></i>
-                        Kembali
+                    <button id="add-violation-btn"
+                        class="bg-rose-600 text-white font-black px-6 py-3 rounded-2xl flex items-center gap-2 shadow-xl shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95">
+                        <i data-lucide="plus-circle" width="20" height="20"></i>
+                        CATAT PELANGGARAN
                     </button>
                 </div>
+
+                <!-- Empty State -->
+                <div id="empty-state"
+                    class="hidden flex flex-col items-center justify-center min-h-[40vh] bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-100/50 p-10 text-center space-y-6">
+                    <div class="p-6 bg-emerald-50 text-emerald-500 rounded-full">
+                        <i data-lucide="shield-check" width="64" height="64"></i>
+                    </div>
+                    <div class="space-y-2 max-w-lg">
+                        <h3 class="text-2xl font-black text-slate-900 tracking-tight">Semua Bersih!</h3>
+                        <p class="text-slate-500 font-medium leading-relaxed">
+                            Belum ada data pelanggaran yang tercatat. Kinerja karyawan sangat baik.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Violation List -->
+                <div id="violation-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
             </div>
         </main>
     </div>
 
+    <!-- Modal Form -->
+    <div id="modal-overlay"
+        class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div id="modal-content"
+            class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl scale-95 transition-transform duration-300 max-h-[90vh] flex flex-col">
+
+            <!-- Modal Header -->
+            <div class="p-8 pb-4 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h3 class="text-2xl font-black text-slate-900">Input Pelanggaran</h3>
+                    <p class="text-sm text-slate-500 font-medium">Catat detail pelanggaran baru.</p>
+                </div>
+                <button id="close-modal-btn"
+                    class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all">
+                    <i data-lucide="x" width="24" height="24"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-8 overflow-y-auto custom-scrollbar space-y-6">
+                <form id="violation-form" class="space-y-6">
+
+                    <!-- Karyawan -->
+                    <div class="space-y-2">
+                        <label
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Karyawan</label>
+                        <div class="relative">
+                            <select id="employee-select" required
+                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-rose-200 outline-none font-bold text-slate-700 appearance-none">
+                                <option value="" disabled selected>Pilih Karyawan...</option>
+                            </select>
+                            <i data-lucide="chevron-down"
+                                class="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                        </div>
+                    </div>
+
+                    <!-- Level & Jenis -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tingkat
+                                Sanksi</label>
+                            <div class="relative">
+                                <select id="level-select" required
+                                    class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-rose-200 outline-none font-bold text-slate-700 appearance-none">
+                                    <option value="CMC">CMC</option>
+                                    <option value="SP1">SP 1</option>
+                                    <option value="SP2">SP 2</option>
+                                    <option value="SP3">SP 3</option>
+                                </select>
+                                <i data-lucide="chevron-down"
+                                    class="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jenis
+                                Pelanggaran</label>
+                            <input type="text" id="violation-type" required placeholder="Contoh: Terlambat > 5x"
+                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-rose-200 outline-none font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-400">
+                        </div>
+                    </div>
+
+                    <!-- Tanggal -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai
+                                Berlaku</label>
+                            <input type="date" id="start-date" required
+                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-rose-200 outline-none font-bold text-slate-700">
+                        </div>
+                        <div class="space-y-2">
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Berakhir</label>
+                            <input type="date" id="end-date" required
+                                class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-rose-200 outline-none font-bold text-slate-700">
+                        </div>
+                    </div>
+
+                    <!-- Tindak Lanjut -->
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tindak
+                            Lanjut / Keterangan</label>
+                        <textarea id="follow-up" rows="3" required
+                            placeholder="Jelaskan tindakan perbaikan atau detail sanksi..."
+                            class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-rose-200 outline-none font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-400 resize-none"></textarea>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="pt-4 flex gap-4">
+                        <button type="button" id="cancel-btn"
+                            class="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-colors">Batal</button>
+                        <button type="submit"
+                            class="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200">SIMPAN
+                            DATA</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { requireAuth, logout } from './js/auth.js';
         import { renderSidebar } from './js/components.js';
+        import { StorageManager, UserRole } from './js/data.js';
 
         const user = requireAuth();
         if (user) {
             document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
 
-            // Mobile Menu Logic
+            // Initialization
+            const violations = StorageManager.getViolations();
+            const users = StorageManager.getUsers();
+            const isAdmin = user.role === UserRole.ADMIN;
+
+            // DOM Elements
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalContent = document.getElementById('modal-content');
+            const violationList = document.getElementById('violation-list');
+            const emptyState = document.getElementById('empty-state');
+            const employeeSelect = document.getElementById('employee-select');
+            const addBtn = document.getElementById('add-violation-btn');
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
+
+            // Hide Add Button for non-admin
+            if (!isAdmin && addBtn) {
+                addBtn.classList.add('hidden');
+            }
+
+            // Populate Employee Select (Only for admin)
+            if (isAdmin) {
+                users.forEach(u => {
+                    const option = document.createElement('option');
+                    option.value = u.id;
+                    option.textContent = `${u.name} (${u.nid}) - ${u.division}`;
+                    employeeSelect.appendChild(option);
+                });
+            }
+
+            // Auto-Calculate End Date (+6 Months)
+            if (startDateInput && endDateInput) {
+                startDateInput.addEventListener('change', (e) => {
+                    const start = new Date(e.target.value);
+                    if (!isNaN(start.getTime())) {
+                        const end = new Date(start);
+                        end.setMonth(end.getMonth() + 6);
+                        endDateInput.value = end.toISOString().split('T')[0];
+                    }
+                });
+            }
+
+            // Render List Logic
+            const renderViolations = () => {
+                let currentData = StorageManager.getViolations();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Auto-Expire: Delete if ended
+                const activeData = currentData.filter(v => {
+                    const end = new Date(v.endDate);
+                    return end >= today;
+                });
+
+                if (activeData.length !== currentData.length) {
+                    StorageManager.saveViolations(activeData);
+                    currentData = activeData;
+                }
+
+                if (!isAdmin) {
+                    currentData = currentData.filter(v => v.userId === user.id);
+                }
+
+                violationList.innerHTML = '';
+
+                if (currentData.length === 0) {
+                    violationList.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                violationList.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+
+                // Sort by date desc
+                currentData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                currentData.forEach(v => {
+                    const emp = users.find(u => u.id === v.userId) || { name: 'Unknown', avatar: 'https://ui-avatars.com/api/?name=?' };
+
+                    const levelColors = {
+                        'CMC': 'bg-blue-50 text-blue-600 border-blue-100',
+                        'SP1': 'bg-amber-50 text-amber-600 border-amber-100',
+                        'SP2': 'bg-orange-50 text-orange-600 border-orange-100',
+                        'SP3': 'bg-rose-50 text-rose-600 border-rose-100',
+                    };
+
+                    // Time Remaining Logic
+                    const endDate = new Date(v.endDate);
+                    const diffTime = Math.abs(endDate - today);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    let timeRemainingClass = 'text-emerald-600 bg-emerald-50';
+                    let timeText = `${diffDays} Hari Tersisa`;
+
+                    if (diffDays < 30) {
+                        timeRemainingClass = 'text-rose-600 bg-rose-50 animate-pulse';
+                        timeText = `Segera Berakhir (${diffDays} Hari)`;
+                    } else if (diffDays < 90) {
+                        timeRemainingClass = 'text-amber-600 bg-amber-50';
+                    }
+
+                    const deleteBtn = isAdmin ? `
+                        <button onclick="window.deleteViolation('${v.id}')" class="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all z-10">
+                            <i data-lucide="trash-2" width="18" height="18"></i>
+                        </button>
+                    ` : '';
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-100/50 hover:shadow-xl transition-all group relative overflow-hidden";
+                    card.innerHTML = `
+                        <!-- Status Bar -->
+                        <div class="absolute top-0 left-0 right-0 h-1.5 ${v.level === 'SP3' ? 'bg-rose-500' : (v.level === 'SP2' ? 'bg-orange-500' : (v.level === 'SP1' ? 'bg-amber-500' : 'bg-blue-500'))}"></div>
+                        
+                        ${deleteBtn}
+                        
+                        <div class="flex items-center gap-4 mb-6 mt-2">
+                            <img src="${emp.avatar}" alt="${emp.name}" class="w-12 h-12 rounded-full border-2 border-slate-100 shadow-sm">
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-bold text-slate-900 truncate">${emp.name}</h4>
+                                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${levelColors[v.level] || 'bg-slate-100 text-slate-500'} border">
+                                        ${v.level}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${timeRemainingClass} border border-transparent">
+                                        ${timeText}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Pelanggaran</p>
+                                <p class="font-bold text-slate-800 line-clamp-2" title="${v.type}">${v.type}</p>
+                            </div>
+                            
+                            <div class="flex gap-4 p-3 bg-slate-50 rounded-xl">
+                                <div class="flex-1">
+                                    <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Mulai</p>
+                                    <p class="font-bold text-slate-700 text-xs">${v.startDate}</p>
+                                </div>
+                                <div class="flex-1 border-l border-slate-200 pl-4">
+                                    <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Berakhir</p>
+                                    <p class="font-bold text-indigo-600 text-xs">${v.endDate}</p>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Tindak Lanjut</p>
+                                <p class="text-xs text-slate-600 leading-relaxed italic line-clamp-3">"${v.followUp}"</p>
+                            </div>
+                        </div>
+                    `;
+                    violationList.appendChild(card);
+                });
+                lucide.createIcons();
+            };
+
+            renderViolations();
+
+            // Modal Handlers
+            const openModal = () => {
+                modalOverlay.classList.remove('hidden');
+                // Small delay to allow display block to apply before opacity transition
+                setTimeout(() => {
+                    modalOverlay.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-95');
+                    modalContent.classList.add('scale-100');
+                }, 10);
+            };
+
+            const closeModal = () => {
+                modalOverlay.classList.add('opacity-0');
+                modalContent.classList.remove('scale-100');
+                modalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    modalOverlay.classList.add('hidden');
+                    document.getElementById('violation-form').reset();
+                }, 300);
+            };
+
+            document.getElementById('add-violation-btn').onclick = openModal;
+            document.getElementById('close-modal-btn').onclick = closeModal;
+            document.getElementById('cancel-btn').onclick = closeModal;
+
+            // Form Submit
+            document.getElementById('violation-form').onsubmit = (e) => {
+                e.preventDefault();
+
+                const newViolation = {
+                    id: crypto.randomUUID(),
+                    userId: employeeSelect.value,
+                    level: document.getElementById('level-select').value,
+                    startDate: document.getElementById('start-date').value,
+                    endDate: document.getElementById('end-date').value,
+                    type: document.getElementById('violation-type').value,
+                    followUp: document.getElementById('follow-up').value,
+                    createdAt: new Date().toISOString()
+                };
+
+                const current = StorageManager.getViolations();
+                current.push(newViolation);
+                StorageManager.saveViolations(current);
+
+                closeModal();
+                renderViolations();
+
+                // Show simplistic toast
+                alert("Data pelanggaran berhasil disimpan!");
+            };
+
+            // Expose delete
+            window.deleteViolation = (id) => {
+                if (confirm('Hapus data pelanggaran ini?')) {
+                    const current = StorageManager.getViolations();
+                    const updated = current.filter(v => v.id !== id);
+                    StorageManager.saveViolations(updated);
+                    renderViolations();
+                }
+            };
+
+            // Standard Mobile Menu & Logout
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+            const mobileOverlaySidebar = document.getElementById('mobile-sidebar-overlay');
             const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
             const logoutBtn = document.getElementById('logout-btn');
 
             if (mobileMenuBtn) {
                 mobileMenuBtn.addEventListener('click', () => {
-                    mobileOverlay.classList.remove('hidden');
+                    mobileOverlaySidebar.classList.remove('hidden');
                 });
             }
             if (closeMobileSidebar) {
                 closeMobileSidebar.addEventListener('click', () => {
-                    mobileOverlay.classList.add('hidden');
+                    mobileOverlaySidebar.classList.add('hidden');
                 });
             }
             if (logoutBtn) {

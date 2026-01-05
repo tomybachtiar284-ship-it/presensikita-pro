@@ -11,11 +11,11 @@ export const renderSidebar = (user, activePath) => {
         { name: 'Gaji', icon: 'wallet', path: 'payroll.html' },
         { name: 'Riwayat', icon: 'history', path: 'history.html' },
         { name: 'Izin & Cuti', icon: 'calendar-days', path: 'leave.html' },
+        { name: 'Pelanggaran', icon: 'alert-triangle', path: 'violations.html' },
     ];
 
     if (isAdmin) {
         menuItems.push({ name: 'Karyawan', icon: 'users', path: 'employees.html' });
-        menuItems.push({ name: 'Pelanggaran', icon: 'alert-triangle', path: 'violations.html' });
         menuItems.push({ name: 'Pengaturan', icon: 'settings', path: 'settings.html' });
     }
 
