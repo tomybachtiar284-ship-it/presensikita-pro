@@ -33,8 +33,12 @@
     </style>
 </head>
 
-<body class="bg-slate-50 text-slate-900">
-    <div id="app-container" class="flex min-h-screen bg-slate-50">
+<body class="bg-transparent text-slate-900">
+    <div class="fixed inset-0 z-[-1]">
+        <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
+        <div class="absolute inset-0 bg-slate-50/30"></div>
+    </div>
+    <div id="app-container" class="flex min-h-screen bg-transparent">
         <div id="sidebar-container"></div>
 
         <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
@@ -55,7 +59,7 @@
 
                 <!-- Empty State -->
                 <div id="empty-state"
-                    class="hidden flex flex-col items-center justify-center min-h-[40vh] bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-100/50 p-10 text-center space-y-6">
+                    class="hidden flex flex-col items-center justify-center min-h-[40vh] bg-white/80 backdrop-blur-md rounded-[3rem] border border-white/40 shadow-xl shadow-slate-100/50 p-10 text-center space-y-6">
                     <div class="p-6 bg-emerald-50 text-emerald-500 rounded-full">
                         <i data-lucide="shield-check" width="64" height="64"></i>
                     </div>
@@ -182,7 +186,15 @@
         if (user) {
             document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
 
-            // Initialization
+            // Bind Logout Event
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    logout();
+                });
+            }
+
+            lucide.createIcons();
             const violations = StorageManager.getViolations();
             const users = StorageManager.getUsers();
             const isAdmin = user.role === UserRole.ADMIN;
@@ -291,26 +303,34 @@
                     ` : '';
 
                     const card = document.createElement('div');
-                    card.className = "bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-100/50 hover:shadow-xl transition-all group relative overflow-hidden";
+                    card.className = "bg-white/80 backdrop-blur-md p-6 rounded-[2rem] border border-white/40 shadow-lg shadow-slate-100/50 hover:shadow-xl transition-all group relative overflow-hidden";
                     card.innerHTML = `
                         <!-- Status Bar -->
                         <div class="absolute top-0 left-0 right-0 h-1.5 ${v.level === 'SP3' ? 'bg-rose-500' : (v.level === 'SP2' ? 'bg-orange-500' : (v.level === 'SP1' ? 'bg-amber-500' : 'bg-blue-500'))}"></div>
                         
                         ${deleteBtn}
                         
-                        <div class="flex items-center gap-4 mb-6 mt-2">
-                            <img src="${emp.avatar}" alt="${emp.name}" class="w-12 h-12 rounded-full border-2 border-slate-100 shadow-sm">
-                            <div class="flex-1 min-w-0">
-                                <h4 class="font-bold text-slate-900 truncate">${emp.name}</h4>
-                                <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${levelColors[v.level] || 'bg-slate-100 text-slate-500'} border">
-                                        ${v.level}
-                                    </span>
-                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${timeRemainingClass} border border-transparent">
-                                        ${timeText}
-                                    </span>
+                        <div class="flex items-start justify-between mb-6 mt-2">
+                            <div class="flex items-center gap-4">
+                                <img src="${emp.avatar}" alt="${emp.name}" class="w-12 h-12 rounded-full border-2 border-slate-100 shadow-sm">
+                                <div class="min-w-0">
+                                    <h4 class="font-bold text-slate-900 truncate">${emp.name}</h4>
+                                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${levelColors[v.level] || 'bg-slate-100 text-slate-500'} border">
+                                            ${v.level}
+                                        </span>
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${timeRemainingClass} border border-transparent">
+                                            ${timeText}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
+                            <!-- Email Button (Admin Only) -->
+                            ${isAdmin ? `
+                                <button onclick="window.sendEmail('${v.id}')" class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors" title="Kirim Peringatan">
+                                    <i data-lucide="mail" width="16" height="16"></i>
+                                </button>
+                            ` : ''}
                         </div>
                         
                         <div class="space-y-4">
@@ -404,11 +424,33 @@
                 }
             };
 
+            // Email Handler
+            window.sendEmail = (id) => {
+                const current = StorageManager.getViolations();
+                const violation = current.find(v => v.id === id);
+                if (!violation) return;
+
+                const user = StorageManager.getUsers().find(u => u.id === violation.userId);
+                if (!user) return; // Should not happen
+
+                const subject = `Surat Peringatan - ${user.name} (${violation.level})`;
+                const body = `Yth. Sdr/i ${user.name},%0D%0A%0D%0A` +
+                    `Melalui email ini kami sampaikan Peringatan Terkait Pelanggaran dengan detail berikut:%0D%0A` +
+                    `Jenis Pelanggaran: ${violation.type}%0D%0A` +
+                    `Tingkat: ${violation.level}%0D%0A` +
+                    `Tanggal: ${violation.startDate}%0D%0A%0D%0A` +
+                    `Harap diperhatikan dan menjadi bahan evaluasi.%0D%0A%0D%0A` +
+                    `Terima kasih,%0D%0A` +
+                    `HRD PresensiKita`;
+
+                window.open(`mailto:${user.email}?subject=${subject}&body=${body}`, '_blank');
+            };
+
             // Standard Mobile Menu & Logout
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const mobileOverlaySidebar = document.getElementById('mobile-sidebar-overlay');
             const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
-            const logoutBtn = document.getElementById('logout-btn');
+            // const logoutBtn = document.getElementById('logout-btn'); // Removed duplicate
 
             if (mobileMenuBtn) {
                 mobileMenuBtn.addEventListener('click', () => {

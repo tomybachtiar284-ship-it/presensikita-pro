@@ -12,6 +12,7 @@ export const renderSidebar = (user, activePath) => {
         { name: 'Riwayat', icon: 'history', path: 'history.html' },
         { name: 'Izin & Cuti', icon: 'calendar-days', path: 'leave.html' },
         { name: 'Pelanggaran', icon: 'alert-triangle', path: 'violations.html' },
+        { name: 'Informasi SPPD', icon: 'file-text', path: 'sppd.html' },
         { name: 'Profil Saya', icon: 'user-circle', path: 'profile.html' },
     ];
 
@@ -35,8 +36,8 @@ export const renderSidebar = (user, activePath) => {
     }).join('');
 
     const sidebarHTML = `
-        <div class="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 border-r border-slate-200 bg-white flex-col z-30">
-            <div class="flex flex-col h-full bg-white lg:bg-transparent">
+        <div class="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 border-r border-white/20 bg-white/80 backdrop-blur-md flex-col z-30">
+            <div class="flex flex-col h-full bg-transparent">
                 <div class="p-6">
                     <h1 class="text-2xl font-bold text-indigo-600 tracking-tight">PresensiKita</h1>
                     <p class="text-xs text-slate-400 mt-1 uppercase font-semibold">Enterprise Hub</p>

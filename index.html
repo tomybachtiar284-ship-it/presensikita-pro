@@ -16,96 +16,72 @@
 </head>
 
 <body class="bg-slate-50 text-slate-900">
-  <div class="min-h-screen flex flex-col md:flex-row bg-white">
-    <!-- Left Decoration -->
-    <div class="hidden lg:flex lg:w-1/2 bg-indigo-600 p-12 flex-col justify-between relative overflow-hidden">
-      <div class="absolute top-[-10%] right-[-10%] w-96 h-96 bg-indigo-500 rounded-full opacity-50 blur-3xl"></div>
-      <div class="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-indigo-700 rounded-full opacity-50 blur-3xl"></div>
-
-      <div class="relative z-10">
-        <h1 class="text-4xl font-bold text-white tracking-tight">PresensiKita Pro</h1>
-        <p class="text-indigo-100 mt-2 text-lg">Solusi Manajemen Kehadiran Berbasis AI & Geofencing.</p>
-      </div>
-
-      <div class="relative z-10 space-y-8">
-        <div class="flex gap-4 items-start">
-          <div class="bg-white/10 p-3 rounded-2xl">
-            <i data-lucide="shield-check" class="text-white" width="24" height="24"></i>
-          </div>
-          <div>
-            <h4 class="font-bold text-white">Keamanan Terjamin</h4>
-            <p class="text-indigo-100 text-sm">Validasi lokasi presisi dan proteksi data karyawan standar tinggi.</p>
-          </div>
-        </div>
-        <div class="flex gap-4 items-start">
-          <div class="bg-white/10 p-3 rounded-2xl">
-            <i data-lucide="log-in" class="text-white" width="24" height="24"></i>
-          </div>
-          <div>
-            <h4 class="font-bold text-white">Real-time Dashboard</h4>
-            <p class="text-indigo-100 text-sm">Pantau kehadiran secara langsung dari mana saja.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="relative z-10 text-indigo-200 text-xs">
-        © 2024 PresensiKita Enterprise. All rights reserved.
-      </div>
+  <div class="relative min-h-screen w-full bg-slate-900 flex items-center justify-center p-4 overflow-hidden">
+    <!-- Background Image -->
+    <div class="absolute inset-0 z-0">
+      <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
+      <div class="absolute inset-0 bg-indigo-950/30 backdrop-blur-[1px]"></div>
     </div>
 
-    <!-- Right Form -->
-    <div class="flex-1 flex items-center justify-center p-6 bg-slate-50 md:bg-white">
-      <div class="w-full max-w-md space-y-8">
-        <div class="text-center md:text-left">
-          <h2 class="text-3xl font-bold text-slate-900 tracking-tight">Selamat Datang</h2>
-          <p class="text-slate-500 mt-2">Silakan masuk untuk mengakses portal karyawan.</p>
+    <!-- Login Card -->
+    <div
+      class="relative z-10 w-full max-w-md bg-white/80 backdrop-blur-md rounded-[2.5rem] shadow-2xl border border-white/40 p-8 md:p-10 animation-fade-in-up">
+      <div class="text-center mb-8">
+        <div class="inline-flex p-4 bg-indigo-50 rounded-2xl mb-4 shadow-sm text-indigo-600">
+          <i data-lucide="building-2" width="32" height="32"></i>
+        </div>
+        <h1 class="text-2xl font-black text-slate-800 tracking-tight uppercase">PresensiKita<span
+            class="text-indigo-600">Pro</span></h1>
+        <p class="text-slate-500 font-medium text-xs uppercase tracking-widest mt-1">Enterprise Productivity Hub</p>
+      </div>
+
+      <div class="space-y-6">
+        <div class="text-center">
+          <h2 class="text-xl font-bold text-slate-900">Selamat Datang</h2>
+          <p class="text-slate-500 text-sm mt-1">Masuk untuk memulai aktivitas kerja Anda.</p>
         </div>
 
-        <form id="login-form" class="space-y-6">
+        <form id="login-form" class="space-y-5">
           <div class="space-y-4">
             <div class="relative group">
               <i data-lucide="mail"
-                class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
                 width="20" height="20"></i>
               <input type="email" id="email" placeholder="Email Perusahaan"
-                class="w-full pl-12 pr-4 py-4 bg-slate-50 border-transparent border focus:bg-white focus:border-indigo-600 focus:ring-0 rounded-2xl transition-all"
+                class="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 rounded-2xl transition-all font-bold text-slate-700 outline-none placeholder:font-normal"
                 required />
             </div>
             <div class="relative group">
               <i data-lucide="lock"
-                class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
+                class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors"
                 width="20" height="20"></i>
               <input type="password" id="password" placeholder="Kata Sandi"
-                class="w-full pl-12 pr-4 py-4 bg-slate-50 border-transparent border focus:bg-white focus:border-indigo-600 focus:ring-0 rounded-2xl transition-all"
+                class="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 rounded-2xl transition-all font-bold text-slate-700 outline-none placeholder:font-normal"
                 required />
             </div>
           </div>
 
           <p id="error-msg"
-            class="hidden text-red-600 text-sm font-medium bg-red-50 p-3 rounded-xl border border-red-100"></p>
+            class="hidden text-rose-600 text-xs font-bold bg-rose-50 p-4 rounded-2xl border border-rose-100 text-center animate-pulse">
+          </p>
 
           <button type="submit"
-            class="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:shadow-indigo-200 transform active:scale-[0.98] transition-all">
-            Masuk Sekarang
+            class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-300 transform active:scale-[0.98] transition-all uppercase tracking-widest text-xs">
+            Masuk Portal
           </button>
         </form>
 
-        <div class="relative py-4">
-          <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-slate-100"></div>
-          </div>
-          <div class="relative flex justify-center text-xs uppercase">
-            <span class="bg-white px-2 text-slate-400 font-semibold tracking-wider">Akses Demo Cepat</span>
+        <div class="pt-6 border-t border-slate-100">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-4">Akses Cepat (Demo)
+          </p>
+          <div id="demo-users" class="grid grid-cols-3 gap-3">
+            <!-- Populated by JS -->
           </div>
         </div>
+      </div>
 
-        <div id="demo-users" class="grid grid-cols-3 gap-3">
-          <!-- Populated by JS -->
-        </div>
-
-        <p class="text-center text-slate-400 text-xs">
-          Lupa kata sandi? <a href="#" class="text-indigo-600 font-bold hover:underline">Hubungi HR</a>
-        </p>
+      <div class="mt-8 text-center text-slate-400 text-[10px] font-medium">
+        &copy; 2024 PresensiKita Enterprise. All rights reserved.
       </div>
     </div>
   </div>

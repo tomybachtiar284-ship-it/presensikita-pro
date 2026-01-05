@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -16,8 +19,12 @@
     </style>
 </head>
 
-<body class="bg-slate-50 text-slate-900">
-    <div id="app-container" class="flex min-h-screen bg-slate-50">
+<body class="bg-transparent text-slate-900">
+    <div class="fixed inset-0 z-[-1]">
+        <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
+        <div class="absolute inset-0 bg-slate-50/30"></div>
+    </div>
+    <div id="app-container" class="flex min-h-screen bg-transparent">
         <!-- Sidebar container -->
         <div id="sidebar-container"></div>
 
@@ -43,14 +50,22 @@
             // Render Sidebar
             document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
 
-            // Re-initialize icons for sidebar
+            // Bind Logout Event
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    logout();
+                });
+            }
+
+            // Render User Infoitialize icons for sidebar
             lucide.createIcons();
 
             // Mobile Menu Logic
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
             const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
-            const logoutBtn = document.getElementById('logout-btn');
+            // const logoutBtn = document.getElementById('logout-btn'); // Removed duplicate
 
             if (mobileMenuBtn) {
                 mobileMenuBtn.addEventListener('click', () => {
@@ -134,6 +149,7 @@
                 sakit: totalSakitRequests || userAttendance.filter(a => a.status === 'SICK').length,
                 izin: totalIzinRequests || userAttendance.filter(a => a.status === 'PERMISSION').length,
                 dinas: totalDinasRequests || userAttendance.filter(a => a.status === 'BUSINESS_TRIP').length,
+                totalLateDuration: userAttendance.filter(a => a.status === 'LATE').reduce((acc, curr) => acc + (curr.lateDuration || 0), 0)
             };
 
             // Get Active Shift
@@ -157,6 +173,45 @@
 
             const activeShiftNow = getActiveShift();
             const latestSalary = getPayrolls().find(p => p.userId === user.id);
+
+            // Determine Status Card State
+            const todayRecord = userAttendance.find(a => a.date === today);
+            let statusCard = {
+                title: 'Belum Absen',
+                icon: 'alert-circle',
+                btnText: 'ABSEN SEKARANG',
+                btnAction: "window.location.href = 'attendance.html'",
+                bgClass: 'bg-indigo-600',
+                hoverClass: 'hover:bg-indigo-700',
+                shadowClass: 'shadow-indigo-100',
+                btnTextClass: 'text-indigo-700'
+            };
+
+            if (todayRecord) {
+                if (todayRecord.clockOut) {
+                    statusCard = {
+                        title: 'Sudah Pulang',
+                        icon: 'check-circle-2',
+                        btnText: 'LIHAT RIWAYAT',
+                        btnAction: "window.location.href = 'history.html'",
+                        bgClass: 'bg-slate-800',
+                        hoverClass: 'hover:bg-slate-900',
+                        shadowClass: 'shadow-slate-200',
+                        btnTextClass: 'text-slate-900'
+                    };
+                } else if (todayRecord.clockIn) {
+                    statusCard = {
+                        title: 'Sudah Masuk',
+                        icon: 'clock',
+                        btnText: 'ABSEN PULANG',
+                        btnAction: "window.location.href = 'attendance.html'",
+                        bgClass: 'bg-emerald-600',
+                        hoverClass: 'hover:bg-emerald-700',
+                        shadowClass: 'shadow-emerald-100',
+                        btnTextClass: 'text-emerald-700'
+                    };
+                }
+            }
 
             // Render Dashboard Content
             const dashboardHTML = `
@@ -237,7 +292,7 @@
 
                 <!-- Notifications Modal (Hidden by default) -->
                 <div id="notif-modal" class="hidden fixed inset-0 z-[60] flex items-start justify-end p-4 md:p-8 pointer-events-none">
-                    <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden pointer-events-auto animate-in slide-in-from-right duration-300 mt-16 md:mt-20 max-h-[80vh] flex flex-col">
+                    <div class="bg-white/80 backdrop-blur-md w-full max-w-sm rounded-[2.5rem] shadow-xl border border-white/40 overflow-hidden min-h-[500px] pointer-events-auto animate-in slide-in-from-right duration-300 mt-16 md:mt-20 max-h-[80vh] flex flex-col">
                         <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
                             <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Notifikasi</h3>
                             <div class="flex gap-2">
@@ -296,6 +351,33 @@
                             </div>
                         </div>
 
+
+                        <!-- Export Action for Admin -->
+                        ${isAdmin ? `
+                            <div class="flex justify-end mb-6 relative z-30">
+                                <button onclick="window.toggleExportDropdown()" class="px-6 py-3 bg-white text-indigo-600 border border-indigo-100 shadow-sm rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-2">
+                                    <i data-lucide="download" width="16" height="16"></i> Export Data
+                                </button>
+                                
+                                <div id="export-dropdown" class="hidden absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 origin-top-right transition-all">
+                                    <div class="mb-4">
+                                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pilih Bulan</p>
+                                        <input type="month" id="export-month" value="${today.slice(0, 7)}" class="w-full bg-slate-50 border-none rounded-lg text-xs font-bold text-slate-700 p-2 outline-none focus:ring-2 focus:ring-indigo-100">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <button onclick="window.handleExport('EXCEL')" class="w-full text-left px-4 py-3 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-xl transition-colors flex items-center gap-3 group/item">
+                                            <div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg group-hover/item:bg-emerald-200"><i data-lucide="file-spreadsheet" width="14" height="14"></i></div>
+                                            <span class="text-xs font-bold">Export Excel (XLSX)</span>
+                                        </button>
+                                        <button onclick="window.handleExport('PDF')" class="w-full text-left px-4 py-3 hover:bg-rose-50 text-slate-700 hover:text-rose-700 rounded-xl transition-colors flex items-center gap-3 group/item">
+                                            <div class="p-2 bg-rose-100 text-rose-600 rounded-lg group-hover/item:bg-rose-200"><i data-lucide="file-text" width="14" height="14"></i></div>
+                                            <span class="text-xs font-bold">Export PDF Report</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
                         <!-- Stats Grid -->
                         <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
                             ${isAdmin ? `
@@ -311,7 +393,7 @@
                                 ${renderStatCard('Total Sakit', userStats.sakit, 'Hari', 'stethoscope', 'blue')}
                                 ${renderStatCard('Total Izin', userStats.izin, 'Hari', 'file-check', 'purple')}
                                 ${renderStatCard('Dinas Luar', userStats.dinas, 'Hari', 'briefcase', 'amber')}
-                                ${renderStatCard('Terlambat', userStats.telat, 'Kali', 'clock', 'orange')}
+                                ${renderStatCard('Terlambat', userStats.telat, 'Kali', 'clock', 'orange', userStats.totalLateDuration > 0 ? userStats.totalLateDuration + 'm' : null)}
                                 ${renderStatCard('Hadir', userStats.hadir, 'Hari', 'user-check', 'emerald')}
                                 ${renderStatCard('Gaji', latestSalary ? 'Rp ' + (latestSalary.netSalary / 1000000).toFixed(1) + 'jt' : '-', 'Estimasi', 'wallet', 'indigo')}
                             `}
@@ -326,18 +408,18 @@
                     </div>
 
                     <div class="lg:col-span-4 space-y-8">
-                       <div class="bg-indigo-600 p-8 rounded-[3rem] text-white shadow-2xl shadow-indigo-100 flex flex-col justify-between group cursor-pointer hover:bg-indigo-700 transition-all h-fit">
+                       <div class="${statusCard.bgClass} p-8 rounded-[3rem] text-white shadow-2xl ${statusCard.shadowClass} flex flex-col justify-between group cursor-pointer ${statusCard.hoverClass} transition-all h-fit" onclick="${statusCard.btnAction}">
                             <div class="flex justify-between items-start mb-6">
                                 <div class="space-y-1">
-                                    <p class="text-[10px] font-black text-indigo-200 uppercase tracking-widest">STATUS</p>
-                                    <h4 class="text-3xl font-black">Belum Absen</h4>
+                                    <p class="text-[10px] font-black text-white/60 uppercase tracking-widest">STATUS</p>
+                                    <h4 class="text-3xl font-black">${statusCard.title}</h4>
                                 </div>
                                 <div class="p-4 bg-white/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                    <i data-lucide="alert-circle" width="32" height="32"></i>
+                                    <i data-lucide="${statusCard.icon}" width="32" height="32"></i>
                                 </div>
                             </div>
-                            <button class="w-full bg-white text-indigo-700 font-black py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all text-xs tracking-widest uppercase">
-                                ABSEN SEKARANG
+                            <button class="w-full bg-white ${statusCard.btnTextClass} font-black py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all text-xs tracking-widest uppercase">
+                                ${statusCard.btnText}
                             </button>
                         </div>
                         
@@ -354,7 +436,7 @@
                         </div>
                     </div>
                 </div>
-            `;
+                `;
 
             document.getElementById('dashboard-content').innerHTML = dashboardHTML;
             lucide.createIcons();
@@ -440,17 +522,103 @@
             // Polling for new notifications (every 30s)
             setInterval(renderNotifications, 30000);
             // Placeholder chart logic removed (replaced with "No Data" div)
+
+            // --- EXPORT LOGIC ---
+            window.toggleExportDropdown = () => {
+                const dropdown = document.getElementById('export-dropdown');
+                if (dropdown) dropdown.classList.toggle('hidden');
+            };
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                const dropdown = document.getElementById('export-dropdown');
+                const btn = e.target.closest('button[onclick="window.toggleExportDropdown()"]');
+                const insideDropdown = e.target.closest('#export-dropdown');
+                if (!btn && !insideDropdown && dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+
+            window.handleExport = (type) => {
+                const monthInput = document.getElementById('export-month').value;
+                if (!monthInput) return alert('Pilih bulan terlebih dahulu');
+
+                // 1. Fetch Data
+                const attendance = StorageManager.getAttendance();
+                // Filter by month (YYYY-MM)
+                const filtered = attendance.filter(a => a.date.startsWith(monthInput)).sort((a, b) => a.date.localeCompare(b.date));
+
+                if (filtered.length === 0) return alert('Tidak ada data absensi untuk bulan ini.');
+
+                // Flatten Data for Export
+                const exportData = filtered.map(item => {
+                    const employee = allUsers.find(u => u.id === item.userId);
+                    return {
+                        Tanggal: item.date,
+                        NID: employee ? employee.nid : '-',
+                        Nama: item.user,
+                        Shift: item.shift || '-',
+                        Masuk: item.clockIn || '-',
+                        Keluar: item.clockOut || '-',
+                        Status: item.status,
+                        Terlambat: item.lateDuration ? `${item.lateDuration} min` : '-'
+                    };
+                });
+
+                const monthName = new Date(monthInput).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                const fileName = `Laporan_Absensi_${monthInput} `;
+
+                if (type === 'EXCEL') {
+                    // --- EXCEL EXPORT (SheetJS) ---
+                    if (typeof XLSX === 'undefined') return alert('Library Excel belum dimuat.');
+                    const ws = XLSX.utils.json_to_sheet(exportData);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "Absensi");
+                    XLSX.writeFile(wb, `${fileName}.xlsx`);
+                } else if (type === 'PDF') {
+                    // --- PDF EXPORT (jsPDF + autoTable) ---
+                    if (typeof window.jspdf === 'undefined') return alert('Library PDF belum dimuat.');
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+
+                    // Header
+                    doc.setFontSize(18);
+                    doc.text("Laporan Absensi Karyawan", 14, 22);
+                    doc.setFontSize(11);
+                    doc.setTextColor(100);
+                    doc.text(`Periode: ${monthName} `, 14, 30);
+
+                    // Table
+                    doc.autoTable({
+                        startY: 40,
+                        head: [['Tanggal', 'NID', 'Nama', 'Shift', 'Masuk', 'Keluar', 'Status', 'Terlambat']],
+                        body: exportData.map(row => Object.values(row)),
+                        theme: 'grid',
+                        headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
+                        styles: { fontSize: 8 }
+                    });
+
+                    doc.save(`${fileName}.pdf`);
+                }
+
+                // Close dropdown
+                document.getElementById('export-dropdown').classList.add('hidden');
+            };
+
         }
 
-        function renderStatCard(title, value, subtitle, icon, color) {
+        function renderStatCard(title, value, subtitle, icon, color, extra = null) {
             const colors = {
                 indigo: 'bg-indigo-50 text-indigo-600',
                 amber: 'bg-amber-50 text-amber-600',
                 blue: 'bg-blue-50 text-blue-600',
                 rose: 'bg-rose-50 text-rose-600',
+                purple: 'bg-purple-50 text-purple-600',
+                orange: 'bg-orange-50 text-orange-600',
+                emerald: 'bg-emerald-50 text-emerald-600',
             };
             return `
-                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                <div class="bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/40 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
                 <div class="flex items-start justify-between">
                     <div class="p-4 rounded-2xl ${colors[color]} group-hover:rotate-12 transition-transform">
                        <i data-lucide="${icon}" width="22" height="22"></i>
@@ -459,7 +627,10 @@
                 </div>
                 <div class="mt-4">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${title}</p>
-                    <h4 class="text-2xl font-black text-slate-900 mt-1 tracking-tighter">${value}</h4>
+                    <div class="flex items-baseline gap-2">
+                        <h4 class="text-2xl font-black text-slate-900 mt-1 tracking-tighter">${value}</h4>
+                        ${extra ? `<span class="text-xs font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg">${extra}</span>` : ''}
+                    </div>
                 </div>
                 </div>
             `;

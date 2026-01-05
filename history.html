@@ -17,8 +17,12 @@
     </style>
 </head>
 
-<body class="bg-slate-50 text-slate-900">
-    <div id="app-container" class="flex min-h-screen bg-slate-50">
+<body class="bg-transparent text-slate-900">
+    <div class="fixed inset-0 z-[-1]">
+        <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
+        <div class="absolute inset-0 bg-slate-50/30"></div>
+    </div>
+    <div id="app-container" class="flex min-h-screen bg-transparent">
         <div id="sidebar-container"></div>
 
         <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
@@ -40,11 +44,20 @@
         if (user) {
             document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
 
-            // Mobile Menu Logic
+            // Bind Logout Event
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    logout();
+                });
+            }
+
+            lucide.createIcons(); // Mobile Menu Logic
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
             const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
-            const logoutBtn = document.getElementById('logout-btn');
+            // The logoutBtn declaration and event listener below are now redundant due to the change above.
+            // const logoutBtn = document.getElementById('logout-btn'); 
 
             if (mobileMenuBtn) {
                 mobileMenuBtn.addEventListener('click', () => {
@@ -120,13 +133,14 @@
 
                 const data = getFilteredData().sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
 
-                const tableColumn = ["Tanggal", "Karyawan", "Shift", "Masuk", "Pulang", "Status"];
+                const tableColumn = ["Tanggal", "Karyawan", "Shift", "Masuk", "Pulang", "Terlambat", "Status"];
                 const tableRows = data.map(item => [
                     item.date,
                     item.name,
-                    item.shift,
-                    item.in,
-                    item.out,
+                    item.shift || '-',
+                    item.clockIn || '-',
+                    item.clockOut || '-',
+                    item.lateDuration > 0 ? item.lateDuration + ' m' : '-',
                     item.status
                 ]);
 
@@ -232,13 +246,14 @@
                                 ${isAdmin ? '<th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Karyawan</th>' : ''}
                                 <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Jam Masuk</th>
                                 <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Jam Pulang</th>
+                                <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Terlambat</th>
                                 <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
                             </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                             ${filteredData.length === 0 ? `
                                 <tr>
-                                    <td colspan="${isAdmin ? 6 : 5}" class="px-10 py-16 text-center text-slate-400 font-bold italic">
+                                    <td colspan="${isAdmin ? 7 : 6}" class="px-10 py-16 text-center text-slate-400 font-bold italic">
                                         Tidak ada data yang sesuai dengan filter.
                                     </td>
                                 </tr>
@@ -251,7 +266,7 @@
                                     </div>
                                     <div>
                                         <span class="text-base font-black text-slate-800 block leading-tight">${item.date}</span>
-                                        <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">${item.shift}</span>
+                                        <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">${item.shift || '-'}</span>
                                     </div>
                                     </div>
                                 </td>
@@ -263,14 +278,19 @@
                                 <td class="px-10 py-8">
                                     <div class="flex items-center gap-2">
                                     <i data-lucide="clock" width="16" height="16" class="text-emerald-500"></i>
-                                    <span class="text-sm font-black text-slate-700">${item.in}</span>
+                                    <span class="text-sm font-black text-slate-700">${item.clockIn || '-'}</span>
                                     </div>
                                 </td>
                                 <td class="px-10 py-8">
                                     <div class="flex items-center gap-2">
                                     <i data-lucide="clock" width="16" height="16" class="text-rose-400"></i>
-                                    <span class="text-sm font-black text-slate-700">${item.out}</span>
+                                    <span class="text-sm font-black text-slate-700">${item.clockOut || '-'}</span>
                                     </div>
+                                </td>
+                                <td class="px-10 py-8">
+                                    <span class="text-sm font-bold ${item.lateDuration > 0 ? 'text-rose-500' : 'text-slate-400'}">
+                                        ${item.lateDuration > 0 ? item.lateDuration + ' Menit' : '-'}
+                                    </span>
                                 </td>
                                 <td class="px-10 py-8">
                                     <span class="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${item.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' :
@@ -292,7 +312,7 @@
                                     Tidak ada data.
                                 </div>
                             ` : filteredData.map((item) => `
-                                <div class="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm relative overflow-hidden flex flex-col gap-4">
+                                <div class="bg-white/80 backdrop-blur-md rounded-[2.5rem] border border-white/40 shadow-xl overflow-hidden min-h-[500px]">
                                      <div class="flex justify-between items-start">
                                         <div class="flex items-center gap-3">
                                             <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
@@ -300,29 +320,34 @@
                                             </div>
                                             <div>
                                                  <span class="text-xs font-black text-slate-800 block">${item.date}</span>
-                                                 <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">${item.shift}</span>
+                                                 <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">${item.shift || '-'}</span>
                                             </div>
                                         </div>
-                                        <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${item.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' :
+                                         <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${item.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' :
                             item.status === 'LATE' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'
                         }">
-                                            ${item.status}
-                                        </span>
-                                     </div>
+                                             ${item.status}
+                                         </span>
+                                      </div>
+                                      
+                                      ${item.lateDuration > 0 ? `
+                                        <div class="bg-rose-50 text-rose-600 text-[10px] font-bold px-3 py-2 rounded-lg text-center border border-rose-100">
+                                            Terlambat ${item.lateDuration} Menit
+                                        </div>
+                                      ` : ''}
                                      
                                      ${isAdmin ? `<div class="text-xs font-bold text-slate-700 bg-slate-50 p-2 rounded-lg text-center">${item.name}</div>` : ''}
 
-                                     <div class="grid grid-cols-2 gap-3">
-                                        <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
+                                    <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
                                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Masuk</p>
                                             <p class="text-sm font-bold text-slate-800 flex items-center gap-1">
-                                                <i data-lucide="log-in" width="14" height="14" class="text-emerald-500"></i> ${item.in}
+                                                <i data-lucide="log-in" width="14" height="14" class="text-emerald-500"></i> ${item.clockIn || '-'}
                                             </p>
                                         </div>
                                         <div class="bg-rose-50/50 p-3 rounded-xl border border-rose-100/50">
                                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Pulang</p>
                                             <p class="text-sm font-bold text-slate-800 flex items-center gap-1">
-                                                <i data-lucide="log-out" width="14" height="14" class="text-rose-500"></i> ${item.out}
+                                                <i data-lucide="log-out" width="14" height="14" class="text-rose-500"></i> ${item.clockOut || '-'}
                                             </p>
                                         </div>
                                      </div>

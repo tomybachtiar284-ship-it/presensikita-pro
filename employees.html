@@ -24,8 +24,12 @@
     </style>
 </head>
 
-<body class="bg-slate-50 text-slate-900">
-    <div id="app-container" class="flex min-h-screen bg-slate-50">
+<body class="bg-transparent text-slate-900">
+    <div class="fixed inset-0 z-[-1]">
+        <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
+        <div class="absolute inset-0 bg-slate-50/30"></div>
+    </div>
+    <div id="app-container" class="flex min-h-screen bg-transparent">
         <div id="sidebar-container"></div>
         <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
             <div id="content-container" class="space-y-8 mt-16 lg:mt-0 pb-12">
@@ -60,7 +64,8 @@
                 </div>
 
                 <!-- Tools & Grid -->
-                <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden min-h-[500px]">
+                <div
+                    class="bg-white/80 backdrop-blur-md rounded-[2.5rem] border border-white/40 shadow-xl overflow-hidden min-h-[500px]">
                     <div
                         class="p-8 border-b border-slate-50 flex flex-col md:flex-row gap-6 items-center justify-between bg-slate-50/50">
 
@@ -117,11 +122,18 @@
         if (user) {
             document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
 
-            // Mobile Menu Logic
+            // Bind Logout Event
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    logout();
+                });
+            }
+
+            lucide.createIcons(); // Mobile Menu Logic
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
             const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
-            const logoutBtn = document.getElementById('logout-btn');
 
             if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', () => mobileOverlay.classList.remove('hidden'));
             if (closeMobileSidebar) closeMobileSidebar.addEventListener('click', () => mobileOverlay.classList.add('hidden'));

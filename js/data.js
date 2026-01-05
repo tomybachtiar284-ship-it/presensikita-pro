@@ -42,8 +42,8 @@ export const ShiftType = {
 export const APP_NAME = 'PresensiKita';
 
 export const DEFAULT_SETTINGS = {
-  officeLat: -6.2000,
-  officeLng: 106.8166,
+  officeLat: 1.5709993,
+  officeLng: 127.8087693,
   radiusMeters: 500
 };
 
@@ -65,6 +65,7 @@ const STORAGE_KEYS = {
   REQUESTS: 'PK_REQUESTS', // For Izin/Cuti
   SCHEDULE_OVERRIDES: 'SCHEDULE_OVERRIDES',
   VIOLATIONS: 'PK_VIOLATIONS',
+  SPPD: 'PK_SPPD',
   NOTIFICATIONS: 'PK_NOTIFICATIONS',
   SETTINGS: 'PK_SETTINGS'
 };
@@ -138,9 +139,23 @@ export const saveRequests = (data) => localStorage.setItem(STORAGE_KEYS.REQUESTS
 export const getOverrides = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHEDULE_OVERRIDES) || '{}');
 export const saveOverrides = (overrides) => localStorage.setItem(STORAGE_KEYS.SCHEDULE_OVERRIDES, JSON.stringify(overrides));
 
-export const getViolations = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.VIOLATIONS) || '[]');
-export const saveViolations = (data) => localStorage.setItem(STORAGE_KEYS.VIOLATIONS, JSON.stringify(data));
+export const getViolations = () => {
+  const data = localStorage.getItem(STORAGE_KEYS.VIOLATIONS);
+  return data ? JSON.parse(data) : [];
+};
 
+export const saveViolations = (data) => {
+  localStorage.setItem(STORAGE_KEYS.VIOLATIONS, JSON.stringify(data));
+};
+
+export const getSPPD = () => {
+  const data = localStorage.getItem(STORAGE_KEYS.SPPD);
+  return data ? JSON.parse(data) : [];
+};
+
+export const saveSPPD = (data) => {
+  localStorage.setItem(STORAGE_KEYS.SPPD, JSON.stringify(data));
+};
 export const getNotifications = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS) || '[]');
 export const saveNotifications = (data) => localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(data));
 
@@ -184,6 +199,9 @@ export class StorageManager {
 
   static getViolations() { return getViolations(); }
   static saveViolations(data) { saveViolations(data); return data; }
+
+  static getSPPD() { return getSPPD(); }
+  static saveSPPD(data) { saveSPPD(data); return data; }
 
   static getNotifications() { return getNotifications(); }
   static saveNotifications(data) { saveNotifications(data); return data; }

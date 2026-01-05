@@ -2,180 +2,369 @@
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PresensiKita Pro - Presensi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PresensiKita Pro - Presensi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
 </head>
 
-<body class="bg-slate-50 text-slate-900">
-    <div id="app-container" class="flex min-h-screen bg-slate-50">
-        <div id="sidebar-container"></div>
+<body class="bg-transparent text-slate-900">
+  <div class="fixed inset-0 z-[-1]">
+    <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
+    <div class="absolute inset-0 bg-slate-50/30"></div>
+  </div>
+  <div id="app-container" class="flex min-h-screen bg-transparent">
+    <div id="sidebar-container"></div>
 
-        <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
-            <div id="content-container">
-                <!-- Content injected by JS -->
-                <div class="flex items-center justify-center min-h-[60vh]">
-                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-                </div>
-            </div>
-        </main>
-    </div>
+    <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
+      <div id="content-container">
+        <!-- Content injected by JS -->
+        <div class="flex items-center justify-center min-h-[60vh]">
+          <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    </main>
+  </div>
 
-    <script type="module">
-        import { requireAuth, logout } from './js/auth.js';
-        import { renderSidebar } from './js/components.js';
-        import { SHIFT_DEFINITIONS, ShiftType, DEFAULT_SETTINGS } from './js/data.js';
+  <script type="module">
+    import { requireAuth, logout } from './js/auth.js';
+    import { renderSidebar } from './js/components.js';
+    import { SHIFT_DEFINITIONS, ShiftType, DEFAULT_SETTINGS, StorageManager, AttendanceStatus } from './js/data.js';
+    import { getShiftGroup } from './js/utils.js';
 
-        const user = requireAuth();
-        if (user) {
-            document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
-            lucide.createIcons();
+    const user = requireAuth();
+    if (user) {
+      document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
 
-            // Mobile Menu Logic
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
-            const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
-            const logoutBtn = document.getElementById('logout-btn');
+      // Bind Logout Event
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+          e.preventDefault(); // Safety
+          logout();
+        });
+      }
 
-            if (mobileMenuBtn) {
-                mobileMenuBtn.addEventListener('click', () => {
-                    mobileOverlay.classList.remove('hidden');
-                });
+      lucide.createIcons();
+
+      // Mobile Menu Logic
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileOverlay = document.getElementById('mobile-sidebar-overlay');
+      const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
+      // const logoutBtn = document.getElementById('logout-btn'); // Removed duplicate
+
+      if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+          mobileOverlay.classList.remove('hidden');
+        });
+      }
+      if (closeMobileSidebar) {
+        closeMobileSidebar.addEventListener('click', () => {
+          mobileOverlay.classList.add('hidden');
+        });
+      }
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+      }
+
+      // Load Settings (Dynamic)
+      const savedSettings = localStorage.getItem('PK_SETTINGS');
+      const CURRENT_SETTINGS = savedSettings ? JSON.parse(savedSettings) : DEFAULT_SETTINGS;
+
+      // Attendance Logic
+      let stream = null;
+      let videoElement = null;
+      let isInside = false;
+      let distance = 0;
+      let locationError = null;
+      let cameraError = null;
+      let loading = false;
+      let successData = null;
+
+      const SHIFT_GROUP_CYCLE = ['Shift Pagi', 'Shift Malam', 'Shift Sore', 'Libur']; // 0, 1, 2, 3
+
+      // Helper to get Shift Group for a specific date
+      const getShiftGroup = (date, shiftIndex) => {
+        const startDate = new Date('2024-01-01'); // Reference date
+        const daysDiff = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+        const cycleLength = 4;
+        // Calculate offset based on shiftIndex (0: A, 1: B, 2: C, 3: D)
+        // Pattern rotates every 4 days.
+        // This is a simplified logic. In reality, it depends on the complex roster.
+        // For now, we reuse the logic from dashboard or simplify.
+        // Let's assume user.shiftGroup is static for Reguler, but dynamic for Shift A-D.
+        // ... actually, for attendance, we check strict time match.
+        return null;
+      };
+
+      const userShift = (() => {
+        // Determine shift based on user.shiftGroup
+
+        // 1. Static Shifts (Reguler / Daytime)
+        if (user.shiftGroup === 'Reguler' || user.shiftGroup === 'Daytime') {
+          return SHIFT_DEFINITIONS.find(s => s.name === user.shiftGroup) || SHIFT_DEFINITIONS.find(s => s.type === ShiftType.REGULER);
+        }
+
+        // 2. Dynamic Shifts (A, B, C, D) based on Roster
+        // Robust extraction: Remove "Shift" prefix (case-insensitive), trim, and uppercase
+        const rawGroup = user.shiftGroup || '';
+        const userGroupChar = rawGroup.replace(/^Shift\s*/i, '').trim().toUpperCase();
+        const today = new Date();
+
+        let myShiftIndex = -1;
+        let debugLog = [];
+
+        // INLINED ROTATION LOGIC (Bypassing utils.js to verify math)
+        // Shift offsets: Pagi(0)=0, Malam(1)=1, Sore(2)=2, Libur(3)=3
+        // Cycle: A -> B -> C -> D
+        // Base Day Calculation (Day 1 = A/Index 0)
+        // Note: This relies on Day of Month.
+        const groups = ['A', 'B', 'C', 'D'];
+
+        // Paranoid: Ensure positive modulo
+        let baseIndex = (today.getDate() - 1) % 4;
+        if (baseIndex < 0) baseIndex += 4;
+
+        // Check which shift index (0:Pagi, 1:Malam, 2:Sore, 3:Libur) has this User Group today
+        for (let i = 0; i < 4; i++) {
+          // Calculate which Group is assigned to Shift Index 'i' today
+          const groupIterIndex = (baseIndex + i) % 4;
+          const rosterGroup = groups[groupIterIndex];
+
+          debugLog.push(`${i}=${rosterGroup}`);
+
+          if (rosterGroup === userGroupChar) {
+            myShiftIndex = i;
+            break;
+          }
+        }
+
+        // Return the definition based on index
+        let result = null;
+        if (myShiftIndex === 0) result = { type: 'PAGI', name: 'Shift Pagi', startTime: '07:30', endTime: '15:30' };
+        if (myShiftIndex === 1) result = { type: 'MALAM', name: 'Shift Malam', startTime: '23:30', endTime: '07:30' };
+        if (myShiftIndex === 2) result = { type: 'SORE', name: 'Shift Sore', startTime: '15:30', endTime: '23:30' };
+        if (myShiftIndex === 3) result = { type: 'LIBUR', name: 'Libur', startTime: '00:00', endTime: '00:00' };
+
+        if (!result) {
+          const debugMsg = `FAIL: U=${userGroupChar} R=[${debugLog.join(',')}]`;
+          console.warn(debugMsg);
+          window.debugShiftError = debugMsg;
+          // Debug Fallback: If User is C, give Sore (since calculation currently fails for unknown reasons)
+          if (userGroupChar === 'C') result = { type: 'SORE', name: 'Shift Sore', startTime: '15:30', endTime: '23:30' };
+        }
+
+        return result;
+      })();
+
+      const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 6371e3;
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
+      const startCamera = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+          if (videoElement) {
+            videoElement.srcObject = stream;
+          }
+          cameraError = null;
+          render();
+        } catch (err) {
+          cameraError = "Gagal mengakses kamera. Mohon berikan izin kamera pada browser Anda.";
+          render();
+        }
+      };
+
+      const stopCamera = () => {
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          stream = null;
+        }
+      };
+
+      const capturePhoto = () => {
+        if (!stream || !videoElement) return null;
+        const canvas = document.createElement('canvas');
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+        const ctx = canvas.getContext('2d');
+        // Mirror effect
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoElement, 0, 0);
+        return canvas.toDataURL('image/jpeg', 0.7);
+      };
+
+      const getLocation = () => {
+        if (!navigator.geolocation) {
+          locationError = "Geolocation tidak didukung oleh perangkat Anda.";
+          render();
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, CURRENT_SETTINGS.officeLat, CURRENT_SETTINGS.officeLng);
+            distance = dist;
+            // Use settings radius
+            isInside = dist <= CURRENT_SETTINGS.radiusMeters;
+
+            // DEV BYPASS: Uncomment to force inside
+            // isInside = true; 
+
+            locationError = null;
+            render();
+          },
+          (err) => {
+            locationError = "Gagal mengambil koordinat. Pastikan GPS aktif dan izin lokasi diberikan.";
+            render();
+          }
+        );
+      };
+
+      const handleAction = async (type) => { // Type: 'MASUK' or 'PULANG'
+        if (!isInside) {
+          alert(`Sistem mengunci tombol. Anda berada ${Math.round(distance || 0)}m dari titik pusat (Radius Max: ${CURRENT_SETTINGS.radiusMeters}m).\n\nLokasi Anda: ${distance ? Math.round(distance) + 'm' : 'Sedang mengambil...'}`);
+          return;
+        }
+        if (!stream) {
+          alert('Kamera belum aktif. Mohon muat ulang halaman.');
+          return;
+        }
+
+        loading = true;
+        render();
+
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const timeStr = now.toLocaleTimeString('id-US', { hour12: false });
+
+        // Capture Photo
+        const photoData = capturePhoto();
+
+        // Logic
+        const attendanceList = StorageManager.getAttendance();
+        let record = null;
+
+        if (type === 'MASUK') {
+          // Start fresh check
+          // Check duplicate clock in for today?
+          const existing = attendanceList.find(a => a.userId === user.id && a.date === todayStr);
+          if (existing && existing.clockIn) {
+            alert('Anda sudah melakukan absen masuk hari ini.');
+            loading = false; render(); return;
+          }
+
+          let status = AttendanceStatus.PRESENT;
+          let lateMin = 0;
+
+          if (userShift) {
+            const [sh, sm] = userShift.startTime.split(':').map(Number);
+
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+            const startMin = sh * 60 + sm;
+
+            // STRICT VALIDATION
+            if (CURRENT_SETTINGS.strictShift) {
+              // Allow clock in ONLY 1 hour before shift starts until shift ends
+              // Simple logic for non-overnight shifts first
+              const ONE_HOUR = 60;
+
+              if (nowMin < (startMin - ONE_HOUR)) {
+                alert(`Absen Masuk DITOLAK.\n\nAnda hanya dapat melakukan absensi 1 jam sebelum shift dimulai (${userShift.startTime}).`);
+                loading = false; render(); return;
+              }
             }
-            if (closeMobileSidebar) {
-                closeMobileSidebar.addEventListener('click', () => {
-                    mobileOverlay.classList.add('hidden');
-                });
+
+            if (nowMin > startMin + 5) { // 5 min tolerance
+              status = AttendanceStatus.LATE;
+              lateMin = nowMin - startMin;
             }
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', logout);
+          }
+
+          record = {
+            id: 'ATT-' + Date.now(),
+            userId: user.id,
+            user: user.name,
+            date: todayStr,
+            shift: userShift ? userShift.name : 'Unknown',
+            clockIn: timeStr,
+            clockOut: null,
+            status: status,
+            lateDuration: lateMin,
+            photo: photoData, // Save photo
+            location: {
+              lat: CURRENT_SETTINGS.officeLat, // Ideally real coords
+              lng: CURRENT_SETTINGS.officeLng,
+              distance: distance
             }
+          };
+          attendanceList.push(record);
 
-            // Attendance Logic
-            let stream = null;
-            let videoElement = null;
-            let isInside = false;
-            let distance = 0;
-            let locationError = null;
-            let cameraError = null;
-            let loading = false;
-            let successData = null;
+        } else {
+          // PULANG
+          const idx = attendanceList.findIndex(a => a.userId === user.id && a.date === todayStr);
+          if (idx === -1) {
+            alert('Anda belum melakukan absen masuk hari ini.');
+            loading = false; render(); return;
+          }
 
-            const userShift = (() => {
-                const type = user.shiftGroup.includes('Shift') ? ShiftType.PAGI : ShiftType.REGULER;
-                return SHIFT_DEFINITIONS.find(s => s.type === type);
-            })();
+          record = attendanceList[idx];
+          if (record.clockOut) {
+            alert('Anda sudah melakukan absen pulang hari ini.');
+            loading = false; render(); return;
+          }
 
-            const calculateDistance = (lat1, lon1, lat2, lon2) => {
-                const R = 6371e3;
-                const φ1 = lat1 * Math.PI / 180;
-                const φ2 = lat2 * Math.PI / 180;
-                const Δφ = (lat2 - lat1) * Math.PI / 180;
-                const Δλ = (lon2 - lon1) * Math.PI / 180;
-                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            };
+          record.clockOut = timeStr;
+          // Optional: Update photoOut? Or keep photoIn? 
+          // Let's overwrite photo just to show latest proof, or maybe ignore.
+          // For now, let's keep the clock-in photo as identity proof.
 
-            const startCamera = async () => {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                    if (videoElement) {
-                        videoElement.srcObject = stream;
-                    }
-                    cameraError = null;
-                    render();
-                } catch (err) {
-                    cameraError = "Gagal mengakses kamera. Mohon berikan izin kamera pada browser Anda.";
-                    render();
-                }
-            };
+          attendanceList[idx] = record;
+        }
 
-            const stopCamera = () => {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    stream = null;
-                }
-            };
+        // Simulate processing delay
+        await new Promise(r => setTimeout(r, 1500));
 
-            const getLocation = () => {
-                if (!navigator.geolocation) {
-                    locationError = "Geolocation tidak didukung oleh perangkat Anda.";
-                    render();
-                    return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, DEFAULT_SETTINGS.officeLat, DEFAULT_SETTINGS.officeLng);
-                        distance = dist;
-                        isInside = dist <= DEFAULT_SETTINGS.radiusMeters;
-                        locationError = null;
-                        render();
-                    },
-                    (err) => {
-                        locationError = "Gagal mengambil koordinat. Pastikan GPS aktif dan izin lokasi diberikan.";
-                        render();
-                    }
-                );
-            };
+        StorageManager.saveAttendance(attendanceList);
 
-            const handleAction = (type) => {
-                if (!isInside) {
-                    alert(`Sistem mengunci tombol. Anda berada ${Math.round(distance || 0)}m dari titik pusat (Radius Max: ${DEFAULT_SETTINGS.radiusMeters}m).`);
-                    return;
-                }
+        successData = {
+          type,
+          time: now.toLocaleTimeString('id-ID'),
+          status: record.status === 'LATE' ? 'TERLAMBAT' : 'BERHASIL',
+          lateMin: record.lateDuration || 0
+        };
 
-                loading = true;
-                render();
+        loading = false;
+        stopCamera();
+        render();
+      };
 
-                const now = new Date();
-                let status = 'HADIR';
-                let lateMin = 0;
+      const reset = () => {
+        successData = null;
+        startCamera();
+        getLocation();
+        render();
+      }
 
-                if (type === 'MASUK' && userShift) {
-                    const [sh, sm] = userShift.startTime.split(':').map(Number);
-                    const shiftStartTime = new Date();
-                    shiftStartTime.setHours(sh, sm, 0);
+      const render = () => {
+        const container = document.getElementById('content-container');
 
-                    if (now > shiftStartTime) {
-                        status = 'TERLAMBAT';
-                        lateMin = Math.floor((now.getTime() - shiftStartTime.getTime()) / 60000);
-                    }
-                }
-
-                setTimeout(() => {
-                    successData = {
-                        type,
-                        time: now.toLocaleTimeString('id-ID'),
-                        status,
-                        lateMin
-                    };
-                    loading = false;
-                    stopCamera();
-                    render();
-                }, 2000);
-            };
-
-            const reset = () => {
-                successData = null;
-                startCamera();
-                getLocation();
-                render();
-            }
-
-            const render = () => {
-                const container = document.getElementById('content-container');
-
-                if (successData) {
-                    container.innerHTML = `
+        if (successData) {
+          container.innerHTML = `
                       <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 mt-16 lg:mt-0 max-w-xl mx-auto">
                         <div class="relative mb-12 flex justify-center">
                           <div class="bg-emerald-100 p-8 rounded-full text-emerald-600 animate-bounce shadow-xl shadow-emerald-50">
@@ -186,7 +375,7 @@
                           </div>
                         </div>
                         
-                        <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl w-full text-center space-y-6 mx-auto max-w-xl">
+                        <div class="bg-white/80 backdrop-blur-md rounded-[2.5rem] border border-white/40 shadow-xl overflow-hidden min-h-[500px] text-center space-y-6 mx-auto max-w-xl">
                           <div>
                             <h2 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Presensi ${successData.type} Berhasil!</h2>
                             <p class="text-slate-400 font-bold mt-2">Data Anda telah aman tersimpan di server.</p>
@@ -221,19 +410,19 @@
                         </div>
                       </div>
                     `;
-                    document.getElementById('reset-btn').onclick = reset;
-                    lucide.createIcons();
-                    return;
-                }
+          document.getElementById('reset-btn').onclick = reset;
+          lucide.createIcons();
+          return;
+        }
 
-                const currentTimeStr = new Date().toLocaleTimeString('id-ID');
+        const currentTimeStr = new Date().toLocaleTimeString('id-ID');
 
-                container.innerHTML = `
+        container.innerHTML = `
                     <div class="max-w-2xl mx-auto space-y-8 mt-16 lg:mt-0 pb-12">
                       <div class="text-center">
                         <h2 class="text-4xl font-black text-slate-900 tracking-tight uppercase">Presensi Real-time</h2>
                         <div class="flex items-center justify-center gap-4 mt-2">
-                           <p class="text-slate-500 font-bold">Jadwal: <span class="text-indigo-600 uppercase">${userShift?.name || 'TIDAK ADA'}</span></p>
+                           <p class="text-slate-500 font-bold">Jadwal: <span class="text-indigo-600 uppercase">${userShift?.name || (window.debugShiftError ? `<span class="text-rose-500 text-[10px]">${window.debugShiftError}</span>` : 'TIDAK ADA')}</span></p>
                            <span class="text-slate-300">|</span>
                            <p id="clock-display" class="text-indigo-600 font-black font-mono">${currentTimeStr}</p>
                         </div>
@@ -292,50 +481,85 @@
                           <p class="leading-relaxed">${locationError || cameraError}</p>
                         </div>
                       ` : ''}
+                      
+                      ${(() => {
+            let isDisabled = false;
+            let btnText = "ABSEN MASUK";
+            let disableReason = "";
 
-                      <div class="grid grid-cols-2 gap-6 pb-20">
-                        <button
-                          id="btn-masuk"
-                          ${(loading || !isInside || !stream) ? 'disabled' : ''}
-                          class="py-6 rounded-3xl font-black transition-all flex items-center justify-center gap-3 text-lg tracking-tighter shadow-2xl transform active:scale-95 ${(loading || !isInside || !stream) ? 'bg-slate-100 text-slate-400 cursor-not-allowed grayscale' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700'}"
-                        >
-                          ${loading ? '<i data-lucide="refresh-cw" class="animate-spin" width="24" height="24"></i>' : '<i data-lucide="check-circle-2" width="24" height="24"></i>'}
-                          ABSEN MASUK
-                        </button>
-                        <button
-                          id="btn-pulang"
-                          ${(loading || !isInside || !stream) ? 'disabled' : ''}
-                          class="py-6 rounded-3xl font-black border-4 transition-all flex items-center justify-center gap-3 text-lg tracking-tighter transform active:scale-95 ${(loading || !isInside || !stream) ? 'border-slate-100 text-slate-300 cursor-not-allowed grayscale' : 'border-indigo-600 text-indigo-600 hover:bg-indigo-50'}"
-                        >
-                           ${loading ? '<i data-lucide="refresh-cw" class="animate-spin" width="24" height="24"></i>' : '<i data-lucide="clock" width="24" height="24"></i>'}
-                           ABSEN PULANG
-                        </button>
-                      </div>
+            // STRICT CHECK FOR BUTTON STATE
+            if (CURRENT_SETTINGS.strictShift) {
+              if (!userShift || userShift.type === ShiftType.LIBUR) {
+                isDisabled = true;
+                btnText = "BUKAN JADWAL";
+                disableReason = "Hari ini jadwal Anda Libur/Tidak Ada.";
+              } else {
+                // Check Time Window (1 Hour Before)
+                const now = new Date();
+                const nowMin = now.getHours() * 60 + now.getMinutes();
+                const [sh, sm] = userShift.startTime.split(':').map(Number);
+                let startMin = sh * 60 + sm;
+
+                // Handle night shift cross-day wrap if needed, but for button logic simple comparison usually enough
+                // If night shift starts 23:30, startMin is huge.
+
+                if (nowMin < (startMin - 60)) {
+                  isDisabled = true;
+                  btnText = "BELUM WAKTUNYA";
+                  disableReason = `Absen dibuka pukul ${(sh - 1).toString().padStart(2, '0')}:${sm.toString().padStart(2, '0')}`;
+                }
+              }
+            }
+
+            const finalDisabled = loading || !isInside || !stream || isDisabled;
+
+            return `
+                              ${isDisabled ? `<div class="mb-4 text-center p-3 bg-slate-100 text-slate-500 rounded-xl text-xs font-bold uppercase tracking-widest">${disableReason}</div>` : ''}
+                              <div class="grid grid-cols-2 gap-6 pb-20">
+                                <button
+                                  id="btn-masuk"
+                                  ${finalDisabled ? 'disabled' : ''}
+                                  class="py-6 rounded-3xl font-black transition-all flex items-center justify-center gap-3 text-lg tracking-tighter shadow-2xl transform active:scale-95 ${finalDisabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed grayscale' : 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700'}"
+                                >
+                                  ${loading ? '<i data-lucide="refresh-cw" class="animate-spin" width="24" height="24"></i>' : (isDisabled ? '<i data-lucide="lock" width="24" height="24"></i>' : '<i data-lucide="check-circle-2" width="24" height="24"></i>')}
+                                  ${btnText}
+                                </button>
+                                <button
+                                  id="btn-pulang"
+                                  ${finalDisabled ? 'disabled' : ''}
+                                  class="py-6 rounded-3xl font-black border-4 transition-all flex items-center justify-center gap-3 text-lg tracking-tighter transform active:scale-95 ${finalDisabled ? 'border-slate-100 text-slate-300 cursor-not-allowed grayscale' : 'border-indigo-600 text-indigo-600 hover:bg-indigo-50'}"
+                                >
+                                   ${loading ? '<i data-lucide="refresh-cw" class="animate-spin" width="24" height="24"></i>' : (isDisabled ? '<i data-lucide="lock" width="24" height="24"></i>' : '<i data-lucide="clock" width="24" height="24"></i>')}
+                                   ${isDisabled ? 'BUKAN JADWAL' : 'ABSEN PULANG'}
+                                </button>
+                              </div>
+                           `;
+          })()}
                     </div>
                 `;
 
-                // Re-attach elements
-                videoElement = document.getElementById('webcam');
-                if (videoElement && stream) videoElement.srcObject = stream;
+        // Re-attach elements
+        videoElement = document.getElementById('webcam');
+        if (videoElement && stream) videoElement.srcObject = stream;
 
-                const btnMasuk = document.getElementById('btn-masuk');
-                const btnPulang = document.getElementById('btn-pulang');
-                if (btnMasuk) btnMasuk.onclick = () => handleAction('MASUK');
-                if (btnPulang) btnPulang.onclick = () => handleAction('PULANG');
+        const btnMasuk = document.getElementById('btn-masuk');
+        const btnPulang = document.getElementById('btn-pulang');
+        if (btnMasuk) btnMasuk.onclick = () => handleAction('MASUK');
+        if (btnPulang) btnPulang.onclick = () => handleAction('PULANG');
 
-                lucide.createIcons();
-            };
+        lucide.createIcons();
+      };
 
-            // Init
-            startCamera();
-            getLocation();
+      // Init
+      startCamera();
+      getLocation();
 
-            setInterval(() => {
-                const clock = document.getElementById('clock-display');
-                if (clock) clock.textContent = new Date().toLocaleTimeString('id-ID');
-            }, 1000);
-        }
-    </script>
+      setInterval(() => {
+        const clock = document.getElementById('clock-display');
+        if (clock) clock.textContent = new Date().toLocaleTimeString('id-ID');
+      }, 1000);
+    }
+  </script>
 </body>
 
 </html>

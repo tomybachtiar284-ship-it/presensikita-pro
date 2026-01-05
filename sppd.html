@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PresensiKita Pro - SPPD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-transparent text-slate-900">
+    <div class="fixed inset-0 z-[-1]">
+        <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
+        <div class="absolute inset-0 bg-slate-50/30"></div>
+    </div>
+    <div id="app-container" class="flex min-h-screen bg-transparent">
+        <div id="sidebar-container"></div>
+
+        <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
+            <div id="content-container">
+                <!-- Content injected by JS -->
+                <div class="flex items-center justify-center min-h-[60vh]">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Add/Edit SPPD -->
+    <div id="modal-overlay"
+        class="fixed inset-0 bg-black/50 z-50 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm flex items-center justify-center p-4">
+        <div id="modal-content"
+            class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg transform scale-95 transition-all duration-300 max-h-[90vh] overflow-y-auto">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-900 tracking-tight">Kelola SPPD</h2>
+                        <p class="text-slate-500 font-medium mt-1 text-sm">Update data perjalanan dinas.</p>
+                    </div>
+                    <button id="close-modal-btn"
+                        class="p-2 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                        <i data-lucide="x" width="20" height="20" class="text-slate-500"></i>
+                    </button>
+                </div>
+
+                <form id="sppd-form" class="space-y-6">
+                    <input type="hidden" id="sppd-id">
+
+                    <div>
+                        <label
+                            class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Karyawan</label>
+                        <div class="relative">
+                            <i data-lucide="user" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                width="16" height="16"></i>
+                            <select id="employee-select"
+                                class="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none appearance-none"
+                                required>
+                                <option value="">Pilih Karyawan</option>
+                            </select>
+                            <i data-lucide="chevron-down"
+                                class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" width="16"
+                                height="16"></i>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Nama
+                            Kegiatan</label>
+                        <input type="text" id="activity-name"
+                            class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
+                            placeholder="Contoh: Rapat Koordinasi Pusat" required>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Tanggal
+                                Mulai</label>
+                            <input type="date" id="start-date"
+                                class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                required>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Tanggal
+                                Selesai</label>
+                            <input type="date" id="end-date"
+                                class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Status
+                            Proses (1-6)</label>
+                        <div class="relative">
+                            <i data-lucide="bar-chart-2" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                width="16" height="16"></i>
+                            <select id="status-select" onchange="window.handleStatusChange()"
+                                class="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none appearance-none"
+                                required>
+                                <option value="1">1. Pengajuan</option>
+                                <option value="2">2. Disetujui</option>
+                                <option value="3">3. Pencairan Dana</option>
+                                <option value="4">4. Pelaksanaan</option>
+                                <option value="5">5. Pelaporan</option>
+                                <option value="6">6. Selesai / Lunas</option>
+                            </select>
+                            <i data-lucide="chevron-down"
+                                class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" width="16"
+                                height="16"></i>
+                        </div>
+                    </div>
+
+                    <div id="nominal-input-container" class="hidden">
+                        <label class="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Nominal
+                            Pencairan/Realisasi (Rp)</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
+                            <input type="number" id="nominal-input"
+                                class="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                placeholder="0">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">* Wajib diisi jika status Pelaporan (5) atau Selesai
+                            (6)</p>
+                    </div>
+
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" id="cancel-btn"
+                            class="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">Batal</button>
+                        <button type="submit"
+                            class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all transform active:scale-95">Simpan
+                            Data</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { requireAuth, logout } from './js/auth.js';
+        import { renderSidebar } from './js/components.js';
+        import { StorageManager, UserRole } from './js/data.js';
+
+        const user = requireAuth();
+
+        if (user) {
+            document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
+
+            // Bind Logout Event
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    logout();
+                });
+            }
+
+            lucide.createIcons();
+
+            const isAdmin = user.role === UserRole.ADMIN;
+            const container = document.getElementById('content-container');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalContent = document.getElementById('modal-content');
+            const employeeSelect = document.getElementById('employee-select');
+
+            // Filter State
+            const currentPeriod = new Date().toISOString().slice(0, 7); // YYYY-MM
+            let selectedMonth = currentPeriod;
+
+            // Render SPPD List
+            const renderSPPD = () => {
+                const allData = StorageManager.getSPPD();
+                const users = StorageManager.getUsers();
+
+                // For Admin: Show All. For Employee: Show Own.
+                const initialData = isAdmin ? allData : allData.filter(d => d.userId === user.id);
+
+                // Filter by Month
+                let filteredData = [...initialData];
+                if (selectedMonth) {
+                    filteredData = filteredData.filter(d => d.startDate && d.startDate.startsWith(selectedMonth));
+                }
+
+                // Sort by Created Date DESC
+                filteredData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                // HTML Structure
+                container.innerHTML = `
+                    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+                        <div>
+                            <h2 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Informasi SPPD</h2>
+                            <p class="text-slate-500 font-medium mt-1">Status dan progres perjalanan dinas.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="month" id="month-filter" value="${selectedMonth}" class="px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 focus:ring-2 focus:ring-indigo-100 outline-none shadow-sm text-sm">
+                            ${isAdmin ? `
+                                <button id="add-btn" class="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 active:scale-95 transition-all text-sm tracking-wide flex items-center gap-2">
+                                    <i data-lucide="plus" width="18" height="18"></i>
+                                    Buat SPPD
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    ${!isAdmin ? (() => {
+                        // Calculate Accumulation for Employee using INITIAL (Unfiltered) data
+                        const totalReceived = initialData.reduce((sum, item) => {
+                            // Only count if Status is "Pelaporan" (5) or "Selesai" (6)
+                            if (parseInt(item.paymentStatus) >= 5 && item.nominal) {
+                                return sum + parseInt(item.nominal);
+                            }
+                            return sum;
+                        }, 0);
+
+                        return `
+                        <div class="bg-indigo-600 rounded-[2rem] p-8 text-white relative overflow-hidden mb-8 shadow-2xl shadow-indigo-200">
+                            <div class="absolute top-0 right-0 p-8 opacity-10">
+                                <i data-lucide="wallet" width="120" height="120"></i>
+                            </div>
+                            <div class="relative z-10">
+                                <p class="text-indigo-200 font-bold text-xs uppercase tracking-widest mb-2">Total Akumulasi SPPD Diterima (Keseluruhan)</p>
+                                <h3 class="text-4xl font-black tracking-tight">Rp ${totalReceived.toLocaleString('id-ID')}</h3>
+                                <p class="text-indigo-200 text-sm mt-4 font-medium">Total dari ${initialData.filter(d => parseInt(d.paymentStatus) >= 5).length} perjalanan dinas yang telah cair.</p>
+                            </div>
+                        </div>
+                        `;
+                    })() : ''}
+
+                    ${filteredData.length === 0 ? `
+                        <div class="text-center py-20 bg-white/80 backdrop-blur-md rounded-[2rem] border-2 border-dashed border-white/40">
+                            <div class="bg-indigo-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="file-text" class="text-indigo-500" width="32" height="32"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-slate-900">Belum ada data SPPD</h3>
+                            <p class="text-slate-500 text-sm mt-1">Data SPPD akan muncul di sini.</p>
+                        </div>
+                    ` : `
+                        <div class="grid grid-cols-1 gap-4" id="sppd-list"></div>
+                    `}
+                `;
+
+                const listContainer = document.getElementById('sppd-list');
+                if (listContainer) {
+                    filteredData.forEach(item => {
+                        const emp = users.find(u => u.id === item.userId) || { name: 'Unknown', avatar: `https://ui-avatars.com/api/?name=Unknown` };
+                        const steps = [
+                            { id: 1, label: 'Pengajuan' },
+                            { id: 2, label: 'Disetujui' },
+                            { id: 3, label: 'Pencairan' },
+                            { id: 4, label: 'Jalan' },
+                            { id: 5, label: 'Lapor' },
+                            { id: 6, label: 'Selesai' }
+                        ];
+
+                        const currentStep = parseInt(item.paymentStatus);
+
+                        const stepsHTML = steps.map((step, idx) => {
+                            const isActive = step.id === currentStep;
+                            const isCompleted = step.id < currentStep;
+                            const isUpcoming = step.id > currentStep;
+
+                            let colorClass = isCompleted ? 'bg-emerald-500' : (isActive ? 'bg-indigo-600 animate-pulse' : 'bg-slate-200');
+                            let textClass = (isCompleted || isActive) ? 'text-slate-900 font-bold' : 'text-slate-400 font-medium';
+
+                            return `
+                                <div class="flex flex-col items-center flex-1 relative z-10">
+                                    <div class="w-8 h-8 rounded-full ${colorClass} flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-all">
+                                        ${isCompleted ? '<i data-lucide="check" width="12" height="12"></i>' : step.id}
+                                    </div>
+                                    <p class="text-[9px] uppercase tracking-widest mt-2 ${textClass} text-center hidden md:block">${step.label}</p>
+                                </div>
+                             `;
+                        }).join(`<div class="flex-1 h-1 bg-slate-100 mt-[-24px] relative z-0 mx-[-10px]"></div>`); // Hacky connector
+
+                        // Connector Logic needs standard flex with simplified line
+                        // Let's redo progress bar cleaner
+                        const progressHTML = `
+                            <div class="flex items-center justify-between relative mt-6 px-2">
+                                <!-- Connecting Line Background -->
+                                <div class="absolute left-0 right-0 top-3.5 h-1 bg-slate-100 -z-0"></div>
+                                <!-- Active Line -->
+                                <div class="absolute left-0 top-3.5 h-1 bg-emerald-500 transition-all duration-500 -z-0" style="width: ${((currentStep - 1) / 5) * 100}%"></div>
+                                
+                                ${steps.map(step => {
+                            const isCompleted = step.id <= currentStep;
+                            const isCurrent = step.id === currentStep;
+
+                            return `
+                                        <div class="flex flex-col items-center relative z-10 group">
+                                            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-4 transition-all ${isCompleted ? 'bg-emerald-500 border-emerald-50 text-white' : 'bg-white border-slate-100 text-slate-300'} ${isCurrent ? 'ring-4 ring-emerald-100 scale-110' : ''}">
+                                                ${step.id < currentStep ? '<i data-lucide="check" width="14" height="14"></i>' : step.id}
+                                            </div>
+                                            <div class="absolute top-10 w-20 text-center">
+                                                <p class="text-[9px] uppercase tracking-widest font-bold ${isCompleted ? 'text-slate-700' : 'text-slate-300'}">${step.label}</p>
+                                            </div>
+                                        </div>
+                                    `;
+                        }).join('')}
+                            </div>
+                        `;
+
+                        const card = document.createElement('div');
+                        card.className = "bg-white/80 backdrop-blur-md p-6 rounded-[1.5rem] border border-white/40 shadow-sm hover:shadow-md transition-all";
+                        card.innerHTML = `
+                            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+                                <div class="flex items-center gap-4">
+                                     <img src="${emp.avatar}" alt="${emp.name}" class="w-12 h-12 rounded-full border-2 border-slate-100">
+                                     <div>
+                                         <h3 class="font-bold text-slate-800">${item.activityName}</h3>
+                                         <p class="text-xs text-slate-500 font-bold uppercase tracking-wide mt-0.5">${emp.name}</p>
+                                     </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Jadwal</p>
+                                    <p class="text-sm font-bold text-indigo-600">${item.startDate} <span class="text-slate-400 mx-1">-</span> ${item.endDate}</p>
+                                </div>
+                            </div>
+
+                            <div class="pb-8 border-t border-slate-50 pt-6">
+                                ${progressHTML}
+                            </div>
+
+                            ${!isAdmin && parseInt(item.paymentStatus) >= 5 && item.nominal ? `
+                                <div class="mt-2 text-center p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                                    <p class="text-[10px] font-black uppercase text-emerald-600 tracking-widest mb-1">Total Diterima</p>
+                                    <p class="text-lg font-black text-emerald-700">Rp ${parseInt(item.nominal).toLocaleString('id-ID')}</p>
+                                </div>
+                            ` : ''}
+
+                            ${isAdmin ? `
+                            <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-50">
+                                <button onclick="window.editSPPD('${item.id}')" class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-indigo-100 transition-colors">Update Status</button>
+                                <button onclick="window.deleteSPPD('${item.id}')" class="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-rose-100 transition-colors">Hapus</button>
+                            </div>
+                            ` : ''}
+                        `;
+                        listContainer.appendChild(card);
+                    });
+                }
+                lucide.createIcons();
+
+                // Re-bind Add Button
+                const addBtn = document.getElementById('add-btn');
+                if (addBtn) addBtn.onclick = () => openModal(); // Note: openModal needs to be accessible here, or move declaration up.
+
+                // Bind Filter
+                const monthFilter = document.getElementById('month-filter');
+                if (monthFilter) {
+                    monthFilter.onchange = (e) => {
+                        selectedMonth = e.target.value;
+                        renderSPPD();
+                    };
+                }
+            };
+
+            renderSPPD();
+
+            // Populate User Select
+            const populateUsers = () => {
+                const users = StorageManager.getUsers();
+                employeeSelect.innerHTML = '<option value="">Pilih Karyawan</option>' + users.map(u => `<option value="${u.id}">${u.name} - ${u.division}</option>`).join('');
+            };
+            if (isAdmin) populateUsers();
+
+            // Modal Logic
+            const openModal = (id = null) => {
+                const form = document.getElementById('sppd-form');
+                form.reset();
+                document.getElementById('sppd-id').value = '';
+
+                if (id) {
+                    const data = StorageManager.getSPPD().find(s => s.id === id);
+                    if (data) {
+                        document.getElementById('sppd-id').value = data.id;
+                        document.getElementById('employee-select').value = data.userId;
+                        document.getElementById('activity-name').value = data.activityName;
+                        document.getElementById('start-date').value = data.startDate;
+                        document.getElementById('end-date').value = data.endDate;
+                        document.getElementById('status-select').value = data.paymentStatus;
+                        document.getElementById('nominal-input').value = data.nominal || '';
+                    }
+                }
+
+                // Trigger visibility check
+                window.handleStatusChange();
+
+                modalOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    modalOverlay.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-95');
+                    modalContent.classList.add('scale-100');
+                }, 10);
+            };
+
+            const closeModal = () => {
+                modalOverlay.classList.add('opacity-0');
+                modalContent.classList.remove('scale-100');
+                modalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    modalOverlay.classList.add('hidden');
+                }, 300);
+            };
+
+            document.getElementById('close-modal-btn').onclick = closeModal;
+            document.getElementById('cancel-btn').onclick = closeModal;
+
+            // Globals
+            window.editSPPD = (id) => openModal(id);
+            window.deleteSPPD = (id) => {
+                if (confirm("Hapus data SPPD ini?")) {
+                    const current = StorageManager.getSPPD();
+                    const updated = current.filter(d => d.id !== id);
+                    StorageManager.saveSPPD(updated);
+                    renderSPPD();
+                }
+            };
+
+            // Handle Status Change
+            window.handleStatusChange = () => {
+                const status = parseInt(document.getElementById('status-select').value);
+                const nominalContainer = document.getElementById('nominal-input-container');
+                const nominalInput = document.getElementById('nominal-input');
+
+                if (status >= 5) {
+                    nominalContainer.classList.remove('hidden');
+                    nominalInput.required = true;
+                } else {
+                    nominalContainer.classList.add('hidden');
+                    nominalInput.required = false;
+                    nominalInput.value = '';
+                }
+            };
+
+            // Submit Handler
+            document.getElementById('sppd-form').onsubmit = (e) => {
+                e.preventDefault();
+                const id = document.getElementById('sppd-id').value;
+                const record = {
+                    id: id || 'SPPD-' + Date.now(),
+                    userId: document.getElementById('employee-select').value,
+                    activityName: document.getElementById('activity-name').value,
+                    startDate: document.getElementById('start-date').value,
+                    endDate: document.getElementById('end-date').value,
+                    paymentStatus: document.getElementById('status-select').value,
+                    nominal: document.getElementById('nominal-input').value || 0,
+                    createdAt: new Date().toISOString()
+                };
+
+                const current = StorageManager.getSPPD();
+                if (id) {
+                    const idx = current.findIndex(c => c.id === id);
+                    if (idx !== -1) current[idx] = record;
+                } else {
+                    current.push(record);
+                }
+
+                StorageManager.saveSPPD(current);
+                closeModal();
+                renderSPPD();
+                alert("Data SPPD berhasil disimpan!");
+            };
+
+            // Mobile Menu
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileOverlaySidebar = document.getElementById('mobile-sidebar-overlay');
+            const closeMobileSidebar = document.getElementById('close-mobile-sidebar');
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', () => {
+                    mobileOverlaySidebar.classList.remove('hidden');
+                });
+            }
+            if (closeMobileSidebar) {
+                closeMobileSidebar.addEventListener('click', () => {
+                    mobileOverlaySidebar.classList.add('hidden');
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
