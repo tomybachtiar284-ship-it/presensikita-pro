@@ -15,6 +15,7 @@
     </style>
 </head>
 
+
 <body class="bg-transparent text-slate-900">
     <div class="fixed inset-0 z-[-1]">
         <img src="assets/main-bg.png" class="w-full h-full object-cover" alt="Background" />
@@ -23,14 +24,16 @@
     <div id="app-container" class="flex min-h-screen bg-transparent">
         <div id="sidebar-container"></div>
 
-        <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
-            <div id="content-container" class="space-y-8 mt-16 lg:mt-0 pb-12">
+        <main class="flex-1 lg:ml-64 p-3 pt-20 md:p-8 md:pt-24 pb-28 lg:pb-8 lg:pt-8">
+            <div id="content-container" class="space-y-4 md:space-y-8 mt-6 lg:mt-0 pb-12">
 
                 <!-- Header -->
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h2 class="text-3xl font-black text-slate-900 tracking-tight">Profil Saya</h2>
-                        <p class="text-slate-500 font-medium">Kelola informasi akun dan keamanan.</p>
+                        <h2 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase">Profil Saya
+                        </h2>
+                        <p class="text-slate-500 font-medium text-xs md:text-base">Kelola informasi akun dan keamanan.
+                        </p>
                     </div>
                 </div>
 
@@ -40,10 +43,10 @@
                         <div
                             class="bg-white/80 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/40 shadow-xl text-center relative overflow-hidden group">
                             <div class="absolute top-0 left-0 right-0 h-32 bg-indigo-600"></div>
-                            <div class="relative z-10 mt-12">
+                            <div class="relative z-10 mt-8 md:mt-12">
                                 <div class="relative inline-block">
                                     <img id="profile-avatar" src="" alt="Avatar"
-                                        class="w-32 h-32 rounded-full border-4 border-white shadow-2xl object-cover bg-slate-200">
+                                        class="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-2xl object-cover bg-slate-200">
                                     <button
                                         class="absolute bottom-0 right-0 p-3 bg-white text-indigo-600 rounded-full shadow-lg border border-slate-100 hover:bg-slate-50 transition-colors"
                                         title="Ubah Foto" onclick="document.getElementById('avatar-input').click()">
@@ -153,12 +156,17 @@
 
     <script type="module">
         import { requireAuth, logout } from './js/auth.js';
-        import { renderSidebar } from './js/components.js';
+        import { renderSidebar, getDesktopHeader, getDesktopFooter } from './js/components.js';
         import { StorageManager } from './js/data.js';
 
         const user = requireAuth();
         if (user) {
             document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
+
+            // Render Desktop Header & Footer
+            const mainContent = document.querySelector('main');
+            const originalContent = mainContent.innerHTML;
+            mainContent.innerHTML = getDesktopHeader(user, 'PROFIL SAYA') + originalContent + getDesktopFooter();
 
             // Bind Logout Event
             const logoutBtn = document.getElementById('logout-btn');

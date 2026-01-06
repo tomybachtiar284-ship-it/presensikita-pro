@@ -36,8 +36,8 @@
     <div id="app-container" class="flex min-h-screen bg-transparent">
         <div id="sidebar-container"></div>
 
-        <main class="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
-            <div id="content-container" class="space-y-8 mt-16 lg:mt-0 pb-12">
+        <main class="flex-1 lg:ml-64 p-3 pt-20 md:p-8 md:pt-24 pb-28 lg:pb-8 lg:pt-8">
+            <div id="content-container" class="space-y-4 md:space-y-8 mt-6 lg:mt-0 pb-12">
                 <!-- Content injected by JS -->
                 <div class="flex items-center justify-center min-h-[60vh]">
                     <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
@@ -48,13 +48,18 @@
 
     <script type="module">
         import { requireAuth, logout } from './js/auth.js';
-        import { renderSidebar } from './js/components.js';
+        import { renderSidebar, getDesktopHeader, getDesktopFooter } from './js/components.js';
         import { UserRole, SHIFT_DEFINITIONS, getOverrides, saveOverrides } from './js/data.js';
         import { getShiftGroup } from './js/utils.js';
 
         const user = requireAuth();
         if (user) {
             document.getElementById('sidebar-container').innerHTML = renderSidebar(user, window.location.pathname);
+
+            // Render Desktop Header & Footer
+            const mainContent = document.querySelector('main');
+            const originalContent = mainContent.innerHTML;
+            mainContent.innerHTML = getDesktopHeader(user, 'JADWAL SHIFT') + originalContent + getDesktopFooter();
 
             // Bind Logout Event
             const logoutBtn = document.getElementById('logout-btn');
@@ -285,20 +290,20 @@
                     const todayStr = new Date().toDateString();
 
                     container.innerHTML = `
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                            <h2 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Kalender Nasional</h2>
-                            <p class="text-slate-500 font-medium mt-1">Informasi hari libur resmi dan agenda perusahaan.</p>
+                            <h2 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase">Kalender Nasional</h2>
+                            <p class="text-slate-500 font-medium text-xs md:text-base mt-1">Informasi hari libur resmi dan agenda perusahaan.</p>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <button id="prev-month" class="p-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm">
-                                    <i data-lucide="chevron-left" width="24" height="24"></i>
+                            <div class="flex items-center gap-2">
+                                <button id="prev-month" class="p-3 md:p-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm">
+                                    <i data-lucide="chevron-left" width="20" height="20"></i>
                                 </button>
-                                <div class="bg-white border border-slate-200 px-8 py-4 rounded-2xl shadow-sm">
-                                    <span class="text-sm font-black text-slate-800 uppercase tracking-widest">${monthLabel}</span>
+                                <div class="bg-white border border-slate-200 px-4 py-3 md:px-8 md:py-4 rounded-2xl shadow-sm">
+                                    <span class="text-xs md:text-sm font-black text-slate-800 uppercase tracking-widest">${monthLabel}</span>
                                 </div>
-                                <button id="next-month" class="p-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm">
-                                    <i data-lucide="chevron-right" width="24" height="24"></i>
+                                <button id="next-month" class="p-3 md:p-4 bg-white border border-slate-200 text-slate-600 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm">
+                                    <i data-lucide="chevron-right" width="20" height="20"></i>
                                 </button>
                             </div>
                         </div>
@@ -375,16 +380,16 @@
                         }
 
                         return `
-                                    <div class="relative aspect-square flex flex-col items-center justify-center rounded-[1rem] md:rounded-[1.5rem] border-2 transition-all cursor-default group overflow-hidden
+                                    <div class="relative aspect-square flex flex-col items-center justify-center rounded-xl md:rounded-[1.5rem] border transition-all cursor-default group overflow-hidden
                                                 ${shiftColorClass}
                                                 ${isToday ? 'ring-2 md:ring-4 ring-indigo-500/20 border-indigo-500 z-10' : ''}
                                                 active:scale-95 md:hover:scale-110 md:hover:shadow-2xl md:hover:z-20
                                             ">
-                                                <span class="text-xs md:text-sm font-black ${isToday ? 'text-indigo-600' : 'text-slate-800'} z-10 relative">${day}</span>
-                                                <span class="text-[0.5rem] md:text-[0.6rem] font-black uppercase tracking-widest mt-0.5 md:mt-1 z-10 relative ${shiftTextClass}">${shiftLabel}</span>
+                                                <span class="text-[10px] md:text-sm font-black ${isToday ? 'text-indigo-600' : 'text-slate-800'} z-10 relative">${day}</span>
+                                                <span class="text-[0.4rem] md:text-[0.6rem] font-black uppercase tracking-widest mt-0.5 md:mt-1 z-10 relative ${shiftTextClass}">${shiftLabel}</span>
                                                 
                                                 ${isHoliday ? `
-                                                    <div class="absolute top-1 right-1 md:top-2 md:right-2 w-1 md:w-1.5 h-1 md:h-1.5 bg-rose-500 rounded-full animate-pulse z-10"></div>
+                                                    <div class="absolute top-1 right-1 md:top-2 md:right-2 w-1.5 md:w-1.5 h-1.5 md:h-1.5 bg-rose-500 rounded-full animate-pulse z-10"></div>
                                                 ` : ''}
                                                 
                                                 ${isHoliday ? `
@@ -406,15 +411,15 @@
                                 </div>
                             </div>
                             
-                            <div class="lg:col-span-4 space-y-8">
-                                <div class="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                            <div class="lg:col-span-4 space-y-4 md:space-y-8">
+                                <div class="bg-slate-900 p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
                                     <div class="absolute top-0 right-0 p-6 opacity-5">
                                         <i data-lucide="calendar" width="120" height="120"></i>
                                     </div>
-                                    <h3 class="text-xl font-black tracking-tight mb-8 uppercase flex items-center gap-3">
+                                    <h3 class="text-lg md:text-xl font-black tracking-tight mb-4 md:mb-8 uppercase flex items-center gap-3">
                                         <i data-lucide="star" class="text-amber-400" width="20" height="20"></i> Hari Libur Bulan Ini
                                     </h3>
-                                    <div class="space-y-6">
+                                    <div class="space-y-4 md:space-y-6">
                                         ${Object.entries(HOLIDAYS_DB)
                             .filter(([key]) => key.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`))
                             .map(([date, name]) => `
